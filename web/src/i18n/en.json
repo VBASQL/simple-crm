@@ -1,0 +1,14 @@
+{
+  "app.name": "Call CRM",
+  "popup.newCustomer": "New customer",
+  "popup.openCustomer": "Open customer",
+  "popup.openTicket": "Open ticket",
+  "popup.addNote": "Add note",
+  "call.status.ringing": "Ringing",
+  "call.status.answered": "Answered",
+  "call.status.missed": "Missed",
+  "call.status.voicemail": "Voicemail",
+  "ticket.status.open": "Open",
+  "ticket.status.pending": "Pending",
+  "ticket.status.closed": "Closed"
+}

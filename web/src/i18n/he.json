@@ -1,0 +1,14 @@
+{
+  "app.name": "מערכת שיחות",
+  "popup.newCustomer": "לקוח חדש",
+  "popup.openCustomer": "פתח לקוח",
+  "popup.openTicket": "פתח פנייה",
+  "popup.addNote": "הוסף הערה",
+  "call.status.ringing": "מצלצל",
+  "call.status.answered": "נענתה",
+  "call.status.missed": "לא נענתה",
+  "call.status.voicemail": "תא קולי",
+  "ticket.status.open": "פתוחה",
+  "ticket.status.pending": "ממתינה",
+  "ticket.status.closed": "סגורה"
+}

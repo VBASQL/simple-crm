@@ -1,0 +1,92 @@
+rules_version = '2';
+
+// Call-Driven CRM security rules.
+// Core tenancy rule: a signed-in user may read/write only documents whose
+// companyId equals their own. Cloud Functions use the Admin SDK and bypass
+// these rules entirely. See CLAUDE.md §6 and docs/build-plan.md.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // User profile doc id == auth uid; carries companyId and role.
+    function myCompanyId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId;
+    }
+
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return signedIn() && myRole() == 'admin';
+    }
+
+    function sameCompany(companyId) {
+      return signedIn() && companyId == myCompanyId();
+    }
+
+    // A user reads their own profile; admins manage users in their company.
+    match /users/{uid} {
+      allow read: if signedIn() && (uid == request.auth.uid || sameCompany(resource.data.companyId));
+      allow write: if isAdmin() && sameCompany(request.resource.data.companyId);
+    }
+
+    // Company config is readable by its members, writable by functions only.
+    match /companies/{companyId} {
+      allow read: if sameCompany(companyId);
+      allow write: if false;
+    }
+
+    // Admin-managed collections: DIDs, email rules.
+    match /dids/{didId} {
+      allow read: if sameCompany(resource.data.companyId);
+      allow write: if isAdmin() && sameCompany(request.resource.data.companyId);
+    }
+
+    match /emailRules/{ruleId} {
+      allow read: if sameCompany(resource.data.companyId);
+      allow write: if isAdmin() && sameCompany(request.resource.data.companyId);
+    }
+
+    // Read-only-from-app domain data; functions write via Admin SDK.
+    match /calls/{callId} {
+      allow read: if sameCompany(resource.data.companyId);
+      allow write: if false;
+    }
+
+    match /events/{eventId} {
+      allow read: if sameCompany(resource.data.companyId);
+      allow write: if false;
+    }
+
+    match /ringing/{callId} {
+      allow read: if sameCompany(resource.data.companyId);
+      allow write: if false;
+    }
+
+    // Agents may create/edit customers and tickets within their company.
+    match /customers/{customerId} {
+      allow read: if sameCompany(resource.data.companyId);
+      allow create: if sameCompany(request.resource.data.companyId);
+      allow update: if sameCompany(resource.data.companyId)
+                    && request.resource.data.companyId == resource.data.companyId;
+      allow delete: if false;
+    }
+
+    match /tickets/{ticketId} {
+      allow read: if sameCompany(resource.data.companyId);
+      allow create: if sameCompany(request.resource.data.companyId);
+      allow update: if sameCompany(resource.data.companyId)
+                    && request.resource.data.companyId == resource.data.companyId;
+      allow delete: if false;
+    }
+
+    // Default deny.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

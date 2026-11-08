@@ -1,0 +1,12 @@
+{
+  "event": "dtmf",
+  "call_id": "1763328773.117048",
+  "timestamp": "2026-10-30T14:05:20+02:00",
+  "direction": "inbound",
+  "caller_number": "0521234567",
+  "did_number": "037654321",
+  "digit": "3",
+  "client_id": "4821",
+  "org_name": "acme.co.il",
+  "server_id": "3"
+}

@@ -16,6 +16,8 @@
     "test:watch": "vitest",
     "test:integration": "firebase emulators:exec --only firestore --project demo-simple-crm \"vitest run --config vitest.integration.config.ts\"",
     "migrate": "node lib/app/migrations/run.js",
+    "seed": "node scripts/seed.mjs",
+    "emulators": "firebase emulators:start --only functions,firestore,auth",
     "serve": "npm run build && firebase emulators:start --only functions,firestore,auth",
     "deploy": "firebase deploy --only firestore,functions"
   },

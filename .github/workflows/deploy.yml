@@ -37,9 +37,22 @@ jobs:
         working-directory: functions
         run: npm ci
 
-      - name: Build
+      - name: Build functions
         working-directory: functions
         run: npm run build
+
+      # Hosting bundle. The VITE_FIREBASE_* values are baked in at build time;
+      # add them as secrets when wiring a real project (until then the bundle
+      # builds with demo defaults and will not reach a live backend).
+      - name: Build web app
+        working-directory: web
+        env:
+          VITE_USE_EMULATORS: 'false'
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+        run: npm ci && npm run build
 
       - name: Write service-account credentials
         run: |
@@ -48,8 +61,8 @@ jobs:
           echo "GCLOUD_PROJECT=$FIREBASE_PROJECT_ID" >> "$GITHUB_ENV"
           echo "$GITHUB_WORKSPACE/functions/node_modules/.bin" >> "$GITHUB_PATH"
 
-      - name: Deploy Firestore rules, indexes and functions
-        run: firebase deploy --only firestore,functions --project "$FIREBASE_PROJECT_ID" --non-interactive
+      - name: Deploy Firestore rules, indexes, functions and hosting
+        run: firebase deploy --only firestore,functions,hosting --project "$FIREBASE_PROJECT_ID" --non-interactive
 
       - name: Run data migrations
         working-directory: functions

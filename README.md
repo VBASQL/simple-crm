@@ -17,7 +17,8 @@ functions/              Firebase Cloud Functions (TypeScript, strict).
   src/infra/            Adapters that implement the domain ports.
   src/shared/           Errors, Result, Zod schemas, phone/time utils.
   src/test/             Fakes for every port + fixtures.
-web/                    React agent SPA (placeholder; Phase 1 UI pending).
+web/                    React agent SPA (Vite + TS): sign-in, calls log,
+                        customer page, and the live incoming-call pop-up.
 firestore.rules         Multi-tenant security rules.
 CLAUDE.md               Binding engineering rules for this repo.
 ```
@@ -61,13 +62,38 @@ This covers the adapter pipeline (`ring → answer → hangup → cdr`, duplicat
 out-of-order delivery) and the security rules (cross-company read denied,
 non-admin write to `dids` denied). A JVM is required for the emulator.
 
+## Run the whole thing locally (emulator, no credentials)
+
+Three shells from the repo root:
+
+```bash
+# 1. emulators (Firestore + Auth)
+cd functions && npm install && npm run emulators
+
+# 2. seed a company, an agent login, a customer, calls and a live ring
+cd functions && npm run seed
+#    → prints: agent@example.com / password123
+
+# 3. the agent app (reads VITE_USE_EMULATORS from web/.env.local)
+cd web && npm install && cp -n .env.example .env.local && npm run dev
+#    → open http://127.0.0.1:5173 and sign in
+```
+
+The SPA connects straight to the Auth + Firestore emulators (`web/src/firebase/client.ts`),
+so no real Firebase project is needed. The seed writes a `ringing` doc, so the
+pop-up fires on load; the calls log and customer timeline read live from
+Firestore. To see a ring arrive from an actual webhook instead of the seed,
+run `npm run serve` in `functions/` (adds the functions emulator) and POST a
+`ring` payload to the local `globalexWebhook` with a matching DID.
+
 ## CI/CD (GitHub Actions)
 
-- **`.github/workflows/ci.yml`** — on every push and PR: `lint → unit tests →
-  build → emulator integration tests`.
+- **`.github/workflows/ci.yml`** — on every push and PR: functions
+  (`lint → unit tests → build → emulator integration tests`) and web
+  (`lint → typecheck → build`).
 - **`.github/workflows/deploy.yml`** — on merge to `main` (or manual dispatch):
-  build, deploy Firestore rules + indexes and the Cloud Functions, then run
-  pending data migrations against the live project.
+  build functions and web, deploy Firestore rules + indexes, Cloud Functions
+  and Hosting, then run pending data migrations against the live project.
 
 Deploy needs two repository secrets:
 
@@ -91,6 +117,7 @@ firebase emulators:exec --only firestore --project demo-simple-crm "npm run migr
 
 ## Not yet (see docs/build-plan.md phases)
 
-Recording copy to Cloud Storage, voicemail audio, email intake, the SPA, FCM
-push, retention jobs. Two open questions remain with Globalex (voicemail audio
-location, recording-link auth/expiry) — see `docs/globalex-webhook.md`.
+Recording copy to Cloud Storage, voicemail audio, email intake, admin screens,
+FCM push, retention jobs, and real-project credentials. Two open questions
+remain with Globalex (voicemail audio location, recording-link auth/expiry) —
+see `docs/globalex-webhook.md`.

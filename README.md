@@ -50,7 +50,44 @@ npm run build
 ```
 
 Integration tests (`*.integration.test.ts`) run against the Firebase emulator
-and are opt-in; `npm test` runs the unit suite only.
+and are kept out of `npm test` so the unit suite stays hermetic:
+
+```bash
+cd functions
+npm run test:integration   # wraps vitest in `firebase emulators:exec --only firestore`
+```
+
+This covers the adapter pipeline (`ring → answer → hangup → cdr`, duplicate and
+out-of-order delivery) and the security rules (cross-company read denied,
+non-admin write to `dids` denied). A JVM is required for the emulator.
+
+## CI/CD (GitHub Actions)
+
+- **`.github/workflows/ci.yml`** — on every push and PR: `lint → unit tests →
+  build → emulator integration tests`.
+- **`.github/workflows/deploy.yml`** — on merge to `main` (or manual dispatch):
+  build, deploy Firestore rules + indexes and the Cloud Functions, then run
+  pending data migrations against the live project.
+
+Deploy needs two repository secrets:
+
+| Secret | Purpose |
+| --- | --- |
+| `FIREBASE_PROJECT_ID` | Target Firebase/GCP project id |
+| `FIREBASE_SERVICE_ACCOUNT` | JSON key for a service account with Cloud Functions Admin, Firebase Rules Admin, Firestore, and Service Account User roles |
+
+### Migrations
+
+Idempotent, ordered data migrations live in `functions/src/app/migrations/`.
+Each has a stable id and is recorded in the `_migrations` Firestore ledger when
+it succeeds, so re-runs are safe. Add one by appending a module to
+`migrations/` and registering it in `registry.ts`; CD runs `npm run migrate`
+after each deploy. Run locally against the emulator with:
+
+```bash
+cd functions && npm run build
+firebase emulators:exec --only firestore --project demo-simple-crm "npm run migrate"
+```
 
 ## Not yet (see docs/build-plan.md phases)
 

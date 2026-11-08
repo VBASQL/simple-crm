@@ -14,8 +14,10 @@
     "lint": "eslint \"src/**/*.ts\"",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "firebase emulators:exec --only firestore --project demo-simple-crm \"vitest run --config vitest.integration.config.ts\"",
+    "migrate": "node lib/app/migrations/run.js",
     "serve": "npm run build && firebase emulators:start --only functions,firestore,auth",
-    "deploy": "firebase deploy --only functions"
+    "deploy": "firebase deploy --only firestore,functions"
   },
   "dependencies": {
     "firebase-admin": "^12.7.0",
@@ -24,12 +26,15 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@types/node": "^20.17.9",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "eslint": "^9.16.0",
     "eslint-import-resolver-typescript": "^3.7.0",
     "eslint-plugin-import": "^2.31.0",
+    "firebase": "^11.1.0",
+    "firebase-tools": "^13.29.1",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.0",
     "vitest": "^2.1.8"

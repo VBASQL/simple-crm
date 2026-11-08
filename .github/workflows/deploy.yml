@@ -1,0 +1,60 @@
+name: Deploy
+
+# Continuous deployment: on merge to main, build, deploy Firestore rules +
+# indexes and the Cloud Functions, then run pending data migrations against
+# the live project.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never run two deploys at once.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    # Required repository secrets:
+    #   FIREBASE_PROJECT_ID     – the target Firebase/GCP project id
+    #   FIREBASE_SERVICE_ACCOUNT – JSON key for a service account with
+    #                              Cloud Functions Admin, Firebase Rules Admin,
+    #                              Firestore, and Service Account User roles.
+    env:
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install dependencies
+        working-directory: functions
+        run: npm ci
+
+      - name: Build
+        working-directory: functions
+        run: npm run build
+
+      - name: Write service-account credentials
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+          echo "GCLOUD_PROJECT=$FIREBASE_PROJECT_ID" >> "$GITHUB_ENV"
+          echo "$GITHUB_WORKSPACE/functions/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Deploy Firestore rules, indexes and functions
+        run: firebase deploy --only firestore,functions --project "$FIREBASE_PROJECT_ID" --non-interactive
+
+      - name: Run data migrations
+        working-directory: functions
+        run: npm run migrate
+
+      - name: Clean up credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

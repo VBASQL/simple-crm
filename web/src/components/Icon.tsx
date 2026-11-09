@@ -9,7 +9,8 @@ export type IconName =
   | 'back'
   | 'logout'
   | 'plus'
-  | 'trash';
+  | 'trash'
+  | 'key';
 
 const PATHS: Record<IconName, string> = {
   calls: 'M3 5.5A2.5 2.5 0 0 1 5.5 3h2L9 7l-2 1.5a12 12 0 0 0 5.5 5.5L14 12l4 1.5v2A2.5 2.5 0 0 1 15.5 18 13 13 0 0 1 3 5.5Z',
@@ -23,6 +24,7 @@ const PATHS: Record<IconName, string> = {
   logout: 'M10 17l-1.5-1.5M9 12h11M16 7l4 5-4 5M14 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8',
   plus: 'M12 5v14M5 12h14',
   trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2',
+  key: 'M15 7a4 4 0 1 1-3.9 5H8v2H6v2H3v-3l5.1-5.1A4 4 0 0 1 15 7ZM16 10h.01',
 };
 
 export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {

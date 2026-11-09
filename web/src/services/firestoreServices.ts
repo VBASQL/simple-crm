@@ -7,6 +7,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
   setDoc,
   where,
   Timestamp,
@@ -46,6 +47,8 @@ export interface Services {
   subscribeAllowlist(companyId: string, cb: (entries: AllowlistEntry[]) => void): Unsubscribe;
   addUser(email: string, companyId: string): Promise<void>;
   removeUser(email: string): Promise<void>;
+  /** Seal a one-time secret; returns its id (used to build the reveal link). */
+  createSecret(secret: string, ttlDays?: number): Promise<string>;
 }
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
@@ -226,6 +229,17 @@ export function createFirestoreServices(db: Firestore): Services {
 
     async removeUser(email) {
       await deleteDoc(doc(db, 'allowlist', email));
+    },
+
+    async createSecret(secret, ttlDays = 7) {
+      const ref = doc(collection(db, 'secrets'));
+      await setDoc(ref, {
+        secret,
+        status: 'sealed',
+        createdAt: serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(Date.now() + ttlDays * 24 * 60 * 60 * 1000),
+      });
+      return ref.id;
     },
   };
 }

@@ -5,6 +5,8 @@ import type { TicketRepo } from '../../domain/ports/TicketRepo.js';
 import type { EventRepo } from '../../domain/ports/EventRepo.js';
 import type { RingingRepo } from '../../domain/ports/RingingRepo.js';
 import type { RawEventStore } from '../../domain/ports/RawEventStore.js';
+import type { SecretStore } from '../../domain/ports/SecretStore.js';
+import type { RevealResult } from '../../domain/secrets/types.js';
 import type { GlobalexPayload } from '../../shared/schemas/globalexPayload.js';
 import type { Company } from '../../domain/companies/types.js';
 import type { Customer } from '../../domain/customers/types.js';
@@ -122,5 +124,41 @@ export class InMemoryRawEventStore implements RawEventStore {
   async markProcessed(id: string): Promise<void> {
     const row = this.captured.find((r) => r.id === id);
     if (row) row.processed = true;
+  }
+}
+
+interface SecretDoc {
+  secret: string;
+  status: 'sealed' | 'opened';
+  claimToken?: string;
+  expiresAt?: Date;
+}
+
+export class InMemorySecretStore implements SecretStore {
+  readonly docs = new Map<string, SecretDoc>();
+
+  seal(id: string, secret: string, expiresAt?: Date): this {
+    this.docs.set(id, { secret, status: 'sealed', ...(expiresAt ? { expiresAt } : {}) });
+    return this;
+  }
+
+  async revealAndConsume(
+    id: string,
+    claimToken: string | undefined,
+    now: Date,
+    newToken: string,
+  ): Promise<RevealResult> {
+    const d = this.docs.get(id);
+    if (d === undefined) return { kind: 'gone' };
+    if (d.expiresAt !== undefined && d.expiresAt.getTime() <= now.getTime()) return { kind: 'gone' };
+    if (d.status === 'sealed') {
+      d.status = 'opened';
+      d.claimToken = newToken;
+      return { kind: 'revealed', secret: d.secret, claimToken: newToken };
+    }
+    if (d.status === 'opened' && claimToken !== undefined && claimToken.length > 0 && claimToken === d.claimToken) {
+      return { kind: 'revealed', secret: d.secret, claimToken };
+    }
+    return { kind: 'gone' };
   }
 }

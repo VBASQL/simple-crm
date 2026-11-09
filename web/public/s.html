@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Secret · Call CRM</title>
+    <style>
+      :root {
+        --bg: #f6f7fb; --surface: #fff; --ink: #1a1c23; --muted: #8b93a7;
+        --line: #e4e7f0; --accent: #5b5bd6; --ok: #0f9d6b; --bad: #dc2626;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root { --bg:#0d0f15; --surface:#161922; --ink:#f1f3f9; --muted:#7983a0; --line:#262b38; --accent:#8b8bf0; --ok:#34d399; --bad:#f87171; color-scheme: dark; }
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 1.25rem; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      .card { width: min(460px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 1.6rem; box-shadow: 0 10px 30px rgba(16,18,29,.08); }
+      .logo { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), #8a7bf0); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 1.1rem; margin-bottom: 1rem; }
+      h1 { font-size: 1.15rem; margin: 0 0 0.3rem; }
+      p { color: var(--muted); font-size: 0.92rem; line-height: 1.6; margin: 0.3rem 0; }
+      .secret { margin-top: 1rem; display: flex; gap: 0.5rem; align-items: stretch; }
+      .secret code { flex: 1; min-width: 0; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.95rem; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 0.7rem 0.8rem; word-break: break-all; user-select: all; }
+      button { font: inherit; font-weight: 600; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 10px; padding: 0.5rem 0.9rem; }
+      button:active { transform: translateY(1px); }
+      .muted { color: var(--muted); }
+      .ok { color: var(--ok); } .bad { color: var(--bad); }
+      .hint { margin-top: 1rem; font-size: 0.85rem; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="logo">C</div>
+      <h1 id="title">Opening secret…</h1>
+      <div id="loading"><p class="muted">One moment.</p></div>
+
+      <div id="revealed" hidden>
+        <p>This is a <b>one-time secret</b>. It won't be shown to anyone else — only this browser can reopen it.</p>
+        <div class="secret">
+          <code id="value"></code>
+          <button id="copy" type="button">Copy</button>
+        </div>
+        <p class="hint ok" id="copystate" hidden>Copied to clipboard.</p>
+      </div>
+
+      <div id="gone" hidden>
+        <p class="bad"><b>This secret is no longer available.</b></p>
+        <p>It has already been opened in another browser, or it has expired. Ask the sender to create a new one-time link.</p>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var id = (location.hash || '').replace(/^#/, '').trim();
+        var $ = function (x) { return document.getElementById(x); };
+        function show(which) {
+          $('loading').hidden = true;
+          $('revealed').hidden = which !== 'revealed';
+          $('gone').hidden = which !== 'gone';
+        }
+        function gone(msg) { $('title').textContent = msg || 'Secret unavailable'; show('gone'); }
+        if (!id) { gone('No secret in this link'); return; }
+
+        var storeKey = 'otss:' + id;
+        var token = null;
+        try { token = localStorage.getItem(storeKey); } catch (e) { token = null; }
+
+        fetch('/api/revealSecret', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: id, claimToken: token || undefined }),
+        })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+          .then(function (res) {
+            if (!res.ok || !res.body || typeof res.body.secret !== 'string') { gone('Secret unavailable'); return; }
+            try { localStorage.setItem(storeKey, res.body.claimToken); } catch (e) { /* private mode: reopen may not work */ }
+            $('title').textContent = 'Your secret';
+            $('value').textContent = res.body.secret;
+            show('revealed');
+          })
+          .catch(function () { gone('Could not load the secret'); });
+
+        $('copy').addEventListener('click', function () {
+          var text = $('value').textContent || '';
+          function flash() { $('copystate').hidden = false; setTimeout(function () { $('copystate').hidden = true; }, 1600); }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(flash).catch(function () {
+              var r = document.createRange(); r.selectNodeContents($('value'));
+              var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+            });
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

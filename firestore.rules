@@ -84,6 +84,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // One-time secrets: an allow-listed user may create a sealed secret; the
+    // value is read and consumed only by the revealSecret function (Admin SDK).
+    match /secrets/{id} {
+      allow create: if isAllowed()
+                    && request.resource.data.status == 'sealed'
+                    && request.resource.data.secret is string;
+      allow read, update, delete: if false;
+    }
+
     // Default deny.
     match /{document=**} {
       allow read, write: if false;

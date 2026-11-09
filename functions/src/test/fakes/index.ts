@@ -8,4 +8,5 @@ export {
   InMemoryEventRepo,
   InMemoryRingingRepo,
   InMemoryRawEventStore,
+  InMemorySecretStore,
 } from './repos.js';

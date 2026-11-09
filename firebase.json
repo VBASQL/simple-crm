@@ -13,6 +13,7 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       { "source": "/api/globalexWebhook", "function": { "functionId": "globalexWebhook", "region": "me-west1" } },
+      { "source": "/api/revealSecret", "function": { "functionId": "revealSecret", "region": "me-west1" } },
       { "source": "**", "destination": "/index.html" }
     ]
   },

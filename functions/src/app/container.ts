@@ -10,6 +10,7 @@ import { CustomerService } from '../domain/customers/CustomerService.js';
 import { TicketService } from '../domain/tickets/TicketService.js';
 import { TicketPolicy } from '../domain/tickets/TicketPolicy.js';
 import { PhoneNormalizer } from '../domain/customers/PhoneNormalizer.js';
+import { SecretService } from '../domain/secrets/SecretService.js';
 
 import { SystemClock } from '../infra/system/SystemClock.js';
 import { UuidGen } from '../infra/system/UuidGen.js';
@@ -21,6 +22,7 @@ import { FirestoreTicketRepo } from '../infra/firestore/FirestoreTicketRepo.js';
 import { FirestoreEventRepo } from '../infra/firestore/FirestoreEventRepo.js';
 import { FirestoreRingingRepo } from '../infra/firestore/FirestoreRingingRepo.js';
 import { FirestoreRawEventStore } from '../infra/firestore/FirestoreRawEventStore.js';
+import { FirestoreSecretStore } from '../infra/firestore/FirestoreSecretStore.js';
 
 import { ApiKeyAuth } from './http/ApiKeyAuth.js';
 import { loadConfig, type Config } from './config.js';
@@ -34,6 +36,7 @@ export interface Container {
   readonly auth: ApiKeyAuth;
   readonly callService: CallService;
   readonly rawEvents: RawEventStore;
+  readonly secretService: SecretService;
 }
 
 export function buildContainer(cfg: Config): Container {
@@ -81,6 +84,7 @@ export function buildContainer(cfg: Config): Container {
     auth: new ApiKeyAuth(cfg.apiKeys),
     callService,
     rawEvents: new FirestoreRawEventStore(db),
+    secretService: new SecretService(new FirestoreSecretStore(db), clock, ids),
   };
 }
 

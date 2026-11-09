@@ -8,11 +8,11 @@ import {
 } from 'react';
 import {
   onAuthStateChanged,
-  signInWithEmailAndPassword,
+  signInWithPopup,
   signOut as fbSignOut,
   type User,
 } from 'firebase/auth';
-import { auth } from '../firebase/client.js';
+import { auth, googleProvider } from '../firebase/client.js';
 import { useServices } from '../services/ServicesContext.js';
 import type { UserProfile } from '../types.js';
 
@@ -20,7 +20,9 @@ interface AuthValue {
   readonly user: User | null;
   readonly profile: UserProfile | null;
   readonly loading: boolean;
-  signIn(email: string, password: string): Promise<void>;
+  /** True when signed in but the email is not on the allow-list. */
+  readonly denied: boolean;
+  signIn(): Promise<void>;
   signOut(): Promise<void>;
 }
 
@@ -35,14 +37,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     return onAuthStateChanged(auth, (next) => {
       setUser(next);
-      if (next === null) {
+      const email = next?.email ?? null;
+      if (email === null) {
         setProfile(null);
         setLoading(false);
         return;
       }
       setLoading(true);
       void services
-        .getUserProfile(next.uid)
+        .getProfileByEmail(email)
         .then(setProfile)
         .finally(() => setLoading(false));
     });
@@ -53,8 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       profile,
       loading,
-      signIn: async (email, password) => {
-        await signInWithEmailAndPassword(auth, email, password);
+      denied: user !== null && profile === null && !loading,
+      signIn: async () => {
+        await signInWithPopup(auth, googleProvider);
       },
       signOut: async () => {
         await fbSignOut(auth);

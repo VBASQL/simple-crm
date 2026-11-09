@@ -70,19 +70,21 @@ Three shells from the repo root:
 # 1. emulators (Firestore + Auth)
 cd functions && npm install && npm run emulators
 
-# 2. seed a company, an agent login, a customer, calls and a live ring
-cd functions && npm run seed
-#    → prints: agent@example.com / password123
+# 2. seed a company, the allow-list, a customer, calls and a live ring
+cd functions && ALLOWED_EMAILS="you@gmail.com" npm run seed
 
 # 3. the agent app (reads VITE_USE_EMULATORS from web/.env.local)
 cd web && npm install && cp -n .env.example .env.local && npm run dev
-#    → open http://127.0.0.1:5173 and sign in
+#    → open http://127.0.0.1:5173, click "Continue with Google"; in the Auth
+#      emulator's popup add an account using the allow-listed email above.
 ```
 
-The SPA connects straight to the Auth + Firestore emulators (`web/src/firebase/client.ts`),
-so no real Firebase project is needed. The seed writes a `ringing` doc, so the
-pop-up fires on load; the calls log and customer timeline read live from
-Firestore. To see a ring arrive from an actual webhook instead of the seed,
+Sign-in is **Google with an allow-list**: only emails present in the Firestore
+`allowlist/{email}` collection get a company/role; everyone else authenticates
+but is denied all data by the security rules. The SPA connects straight to the
+Auth + Firestore emulators (`web/src/firebase/client.ts`), so no real Firebase
+project is needed. The seed writes a `ringing` doc, so the pop-up fires on
+load; the calls log and customer timeline read live from Firestore. To see a ring arrive from an actual webhook instead of the seed,
 run `npm run serve` in `functions/` (adds the functions emulator) and POST a
 `ring` payload to the local `globalexWebhook` with a matching DID.
 
@@ -128,8 +130,13 @@ then merge to `main`. The manual steps are below if you prefer.
 
 | Variable | Effect |
 | --- | --- |
-| `SEED_DEMO=true` | Seed a demo company + `agent@example.com` login after deploy |
+| `SEED_DEMO=true` | Seed a demo company + allow-list + sample data after deploy |
+| `ALLOWED_EMAILS` | Comma-separated Google emails allowed to sign in (used by the seed) |
 | `DEPLOY_FUNCTIONS=true` | Also deploy Cloud Functions (requires the Blaze plan) |
+
+Sign-in uses **Google** with a Firestore allow-list; enable the Google provider
+in Firebase console → Authentication → Sign-in method, and list the permitted
+emails in `ALLOWED_EMAILS`.
 
 Deploys run on every push to `main` (merge your branch via PR) or via
 **Actions → Deploy → Run workflow**. The live app is then at

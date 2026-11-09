@@ -1,37 +1,40 @@
 rules_version = '2';
 
 // Call-Driven CRM security rules.
-// Core tenancy rule: a signed-in user may read/write only documents whose
-// companyId equals their own. Cloud Functions use the Admin SDK and bypass
-// these rules entirely. See CLAUDE.md §6 and docs/build-plan.md.
+// Access is gated by an allow-list keyed on the signed-in Google email:
+// `allowlist/{email}` → { companyId, role }. No allow-list entry = no access.
+// A user may read/write only documents whose companyId matches their entry.
+// Cloud Functions / the seed use the Admin SDK and bypass these rules.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
+    function emailKey() {
+      return request.auth.token.email;
     }
-
-    // User profile doc id == auth uid; carries companyId and role.
+    function allowlistRef() {
+      return /databases/$(database)/documents/allowlist/$(emailKey());
+    }
+    function isAllowed() {
+      return request.auth != null && request.auth.token.email != null && exists(allowlistRef());
+    }
     function myCompanyId() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId;
+      return get(allowlistRef()).data.companyId;
     }
-
     function myRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return get(allowlistRef()).data.role;
     }
-
     function isAdmin() {
-      return signedIn() && myRole() == 'admin';
+      return isAllowed() && myRole() == 'admin';
     }
-
     function sameCompany(companyId) {
-      return signedIn() && companyId == myCompanyId();
+      return isAllowed() && companyId == myCompanyId();
     }
 
-    // A user reads their own profile; admins manage users in their company.
-    match /users/{uid} {
-      allow read: if signedIn() && (uid == request.auth.uid || sameCompany(resource.data.companyId));
-      allow write: if isAdmin() && sameCompany(request.resource.data.companyId);
+    // Each user may read only their own allow-list entry. Entries are managed
+    // out-of-band (Admin SDK / seed); no client writes.
+    match /allowlist/{email} {
+      allow read: if request.auth != null && request.auth.token.email == email;
+      allow write: if false;
     }
 
     // Company config is readable by its members, writable by functions only.

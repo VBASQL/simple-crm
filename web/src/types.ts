@@ -15,11 +15,11 @@ export type EventType =
   | 'note';
 
 export interface UserProfile {
-  readonly uid: string;
+  /** The allow-listed email (the allowlist doc id). */
+  readonly email: string;
   readonly companyId: string;
   readonly name?: string;
   readonly role: 'agent' | 'admin';
-  readonly extension?: string;
 }
 
 export interface RingingDoc {

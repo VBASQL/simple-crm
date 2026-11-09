@@ -87,6 +87,8 @@ jobs:
       - name: Seed demo data
         if: vars.SEED_DEMO == 'true'
         working-directory: functions
+        env:
+          ALLOWED_EMAILS: ${{ vars.ALLOWED_EMAILS }}
         run: npm run seed
 
       - name: Clean up credentials

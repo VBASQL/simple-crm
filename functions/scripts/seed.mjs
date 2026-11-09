@@ -1,14 +1,13 @@
-// Seed the emulators with a company, an agent sign-in, a customer, a few calls
-// and one live "ringing" doc so the SPA has something to show.
+// Seed a company, an allow-list (the Google emails permitted to sign in), a
+// customer, a few calls and one live "ringing" doc so the SPA has data.
 //
-// Run with the emulators up:
-//   firebase emulators:start --only functions,firestore,auth   (in one shell)
-//   npm run seed                                                 (in another)
+// Sign-in is Google (allow-list by email). Set which emails get access:
+//   ALLOWED_EMAILS="you@gmail.com,teammate@gmail.com" npm run seed
 //
-// Then sign in to the web app with the printed credentials.
+// Emulator (default):  firebase emulators:exec ... "npm run seed"
+// Real project:        FIREBASE_PROJECT_ID + GOOGLE_APPLICATION_CREDENTIALS set.
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
 
 // Target the emulator by default; target a real project when FIREBASE_PROJECT_ID
 // is set (CD provides GOOGLE_APPLICATION_CREDENTIALS for the Admin SDK).
@@ -16,27 +15,17 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'demo-simple-crm';
 const isDemo = PROJECT_ID === 'demo-simple-crm';
 if (isDemo) {
   process.env.FIRESTORE_EMULATOR_HOST ??= '127.0.0.1:8080';
-  process.env.FIREBASE_AUTH_EMULATOR_HOST ??= '127.0.0.1:9099';
 }
 
 const COMPANY = 'co-1';
-const EMAIL = 'agent@example.com';
-const PASSWORD = 'password123';
 const CUSTOMER = 'cust-1';
+const ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS || '')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter((e) => e.length > 0);
 
 initializeApp({ projectId: PROJECT_ID });
 const db = getFirestore();
-const auth = getAuth();
-
-async function ensureAgent() {
-  try {
-    const existing = await auth.getUserByEmail(EMAIL);
-    return existing.uid;
-  } catch {
-    const created = await auth.createUser({ email: EMAIL, password: PASSWORD });
-    return created.uid;
-  }
-}
 
 const now = Date.now();
 
@@ -49,8 +38,10 @@ await db.doc(`companies/${COMPANY}`).set({
 });
 await db.doc('dids/d1').set({ number: '+97237654321', companyId: COMPANY, label: 'Main line' });
 
-const uid = await ensureAgent();
-await db.doc(`users/${uid}`).set({ companyId: COMPANY, role: 'agent', name: 'Dana', extension: '201' });
+// Allow-list: each email may sign in with Google and gets this company + role.
+for (const email of ALLOWED_EMAILS) {
+  await db.doc(`allowlist/${email}`).set({ companyId: COMPANY, role: 'admin', name: email.split('@')[0] });
+}
 
 await db.doc(`customers/${CUSTOMER}`).set({
   companyId: COMPANY,
@@ -107,7 +98,11 @@ await db.doc('ringing/seed-ring').set({
   expiresAt: new Date(now + 120_000),
 });
 
-console.log('Seeded emulator project', PROJECT_ID);
-console.log('Sign in at the web app with:');
-console.log('  email:   ', EMAIL);
-console.log('  password:', PASSWORD);
+console.log('Seeded project', PROJECT_ID);
+if (ALLOWED_EMAILS.length === 0) {
+  console.log('WARNING: no ALLOWED_EMAILS set — no one can sign in.');
+  console.log('Re-run with:  ALLOWED_EMAILS="you@gmail.com" npm run seed');
+} else {
+  console.log('Allow-listed Google accounts (sign in with these):');
+  for (const email of ALLOWED_EMAILS) console.log('  -', email);
+}

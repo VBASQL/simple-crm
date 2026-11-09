@@ -31,7 +31,8 @@ export type Unsubscribe = () => void;
 export interface Services {
   subscribeRinging(companyId: string, cb: (docs: RingingDoc[]) => void): Unsubscribe;
   subscribeRecentCalls(companyId: string, cb: (calls: Call[]) => void): Unsubscribe;
-  getUserProfile(uid: string): Promise<UserProfile | null>;
+  /** Resolve an allow-listed profile by email; null → not on the allow-list. */
+  getProfileByEmail(email: string): Promise<UserProfile | null>;
   getCustomer(id: string): Promise<Customer | null>;
   subscribeCustomerCalls(companyId: string, customerId: string, cb: (calls: Call[]) => void): Unsubscribe;
   subscribeCustomerTickets(companyId: string, customerId: string, cb: (t: Ticket[]) => void): Unsubscribe;
@@ -135,17 +136,16 @@ export function createFirestoreServices(db: Firestore): Services {
       return onSnapshot(q, (snap) => cb(snap.docs.map((s) => mapCall(s.id, s.data()))));
     },
 
-    async getUserProfile(uid) {
-      const snap = await getDoc(doc(db, 'users', uid));
+    async getProfileByEmail(email) {
+      const snap = await getDoc(doc(db, 'allowlist', email));
       if (!snap.exists()) return null;
       const d = snap.data();
       const role = str(d.role) === 'admin' ? 'admin' : 'agent';
       return {
-        uid,
+        email,
         companyId: str(d.companyId) ?? '',
         name: str(d.name),
         role,
-        extension: str(d.extension),
       };
     },
 

@@ -1,8 +1,24 @@
 name: Deploy
 
-# Continuous deployment: on merge to main, build, deploy Firestore rules +
-# indexes and the Cloud Functions, then run pending data migrations against
-# the live project.
+# Continuous deployment: on merge to main (or manual dispatch), build and
+# deploy Firestore rules + indexes and Hosting, run data migrations, and
+# optionally deploy Functions / seed demo data.
+#
+# Required repository SECRETS:
+#   FIREBASE_PROJECT_ID        – target Firebase/GCP project id
+#   FIREBASE_SERVICE_ACCOUNT   – JSON key for the project's Firebase Admin SDK
+#                                service account (Project settings → Service
+#                                accounts → Generate new private key)
+#   VITE_FIREBASE_API_KEY      – web app config (public values; from the
+#   VITE_FIREBASE_AUTH_DOMAIN    firebaseConfig snippet in Project settings)
+#   VITE_FIREBASE_APP_ID
+#
+# Optional repository VARIABLES (Settings → Secrets and variables → Actions →
+# Variables):
+#   DEPLOY_FUNCTIONS = true    – also deploy Cloud Functions (needs the Blaze
+#                                plan; omit on the free Spark plan)
+#   SEED_DEMO        = true    – seed a demo company, agent login and sample
+#                                data after deploy (idempotent)
 on:
   push:
     branches: [main]
@@ -17,11 +33,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
-    # Required repository secrets:
-    #   FIREBASE_PROJECT_ID     – the target Firebase/GCP project id
-    #   FIREBASE_SERVICE_ACCOUNT – JSON key for a service account with
-    #                              Cloud Functions Admin, Firebase Rules Admin,
-    #                              Firestore, and Service Account User roles.
     env:
       FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
     steps:
@@ -33,7 +44,7 @@ jobs:
           cache: npm
           cache-dependency-path: functions/package-lock.json
 
-      - name: Install dependencies
+      - name: Install function deps
         working-directory: functions
         run: npm ci
 
@@ -41,9 +52,7 @@ jobs:
         working-directory: functions
         run: npm run build
 
-      # Hosting bundle. The VITE_FIREBASE_* values are baked in at build time;
-      # add them as secrets when wiring a real project (until then the bundle
-      # builds with demo defaults and will not reach a live backend).
+      # Hosting bundle. VITE_FIREBASE_* are public config, baked in at build time.
       - name: Build web app
         working-directory: web
         env:
@@ -56,17 +65,29 @@ jobs:
 
       - name: Write service-account credentials
         run: |
-          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
+          printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/sa.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
           echo "GCLOUD_PROJECT=$FIREBASE_PROJECT_ID" >> "$GITHUB_ENV"
           echo "$GITHUB_WORKSPACE/functions/node_modules/.bin" >> "$GITHUB_PATH"
 
-      - name: Deploy Firestore rules, indexes, functions and hosting
-        run: firebase deploy --only firestore,functions,hosting --project "$FIREBASE_PROJECT_ID" --non-interactive
+      # Free-plan baseline: rules, indexes and hosting (no billing needed).
+      - name: Deploy Firestore rules, indexes and Hosting
+        run: firebase deploy --only firestore,hosting --project "$FIREBASE_PROJECT_ID" --non-interactive
+
+      # Opt-in: Cloud Functions require the Blaze plan.
+      - name: Deploy Cloud Functions
+        if: vars.DEPLOY_FUNCTIONS == 'true'
+        run: firebase deploy --only functions --project "$FIREBASE_PROJECT_ID" --non-interactive
 
       - name: Run data migrations
         working-directory: functions
         run: npm run migrate
+
+      # Opt-in: seed a demo company, agent login and sample data.
+      - name: Seed demo data
+        if: vars.SEED_DEMO == 'true'
+        working-directory: functions
+        run: npm run seed
 
       - name: Clean up credentials
         if: always()

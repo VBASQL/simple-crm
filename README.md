@@ -92,15 +92,42 @@ run `npm run serve` in `functions/` (adds the functions emulator) and POST a
   (`lint → unit tests → build → emulator integration tests`) and web
   (`lint → typecheck → build`).
 - **`.github/workflows/deploy.yml`** — on merge to `main` (or manual dispatch):
-  build functions and web, deploy Firestore rules + indexes, Cloud Functions
-  and Hosting, then run pending data migrations against the live project.
+  build functions and web, deploy Firestore rules + indexes and Hosting (free
+  plan), run pending data migrations, and optionally deploy Cloud Functions /
+  seed demo data. See **CI/CD** below for the required secrets.
 
-Deploy needs two repository secrets:
+Deploy runs entirely in GitHub Actions — no credentials touch any dev machine.
+The baseline deploy (Firestore rules + indexes and Hosting) works on the
+**free Spark plan**; Cloud Functions are opt-in (they need the Blaze plan).
+
+**One-time Firebase console setup**
+
+1. Create a project (console.firebase.google.com).
+2. Build → Authentication → enable **Email/Password**.
+3. Build → Firestore Database → create (production mode).
+4. Project settings → General → add a **Web app** → copy the `firebaseConfig`.
+5. Project settings → Service accounts → **Generate new private key** (JSON).
+
+**GitHub repository secrets** (Settings → Secrets and variables → Actions → Secrets):
 
 | Secret | Purpose |
 | --- | --- |
-| `FIREBASE_PROJECT_ID` | Target Firebase/GCP project id |
-| `FIREBASE_SERVICE_ACCOUNT` | JSON key for a service account with Cloud Functions Admin, Firebase Rules Admin, Firestore, and Service Account User roles |
+| `FIREBASE_PROJECT_ID` | Target project id |
+| `FIREBASE_SERVICE_ACCOUNT` | The service-account JSON key (paste the whole file) |
+| `VITE_FIREBASE_API_KEY` | From `firebaseConfig` (public web config) |
+| `VITE_FIREBASE_AUTH_DOMAIN` | From `firebaseConfig` |
+| `VITE_FIREBASE_APP_ID` | From `firebaseConfig` |
+
+**GitHub repository variables** (same page → Variables), optional:
+
+| Variable | Effect |
+| --- | --- |
+| `SEED_DEMO=true` | Seed a demo company + `agent@example.com` login after deploy |
+| `DEPLOY_FUNCTIONS=true` | Also deploy Cloud Functions (requires the Blaze plan) |
+
+Deploys run on every push to `main` (merge your branch via PR) or via
+**Actions → Deploy → Run workflow**. The live app is then at
+`https://<project-id>.web.app`.
 
 ### Migrations
 

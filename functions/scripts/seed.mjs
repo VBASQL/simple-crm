@@ -10,10 +10,15 @@ import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
-process.env.FIRESTORE_EMULATOR_HOST ??= '127.0.0.1:8080';
-process.env.FIREBASE_AUTH_EMULATOR_HOST ??= '127.0.0.1:9099';
+// Target the emulator by default; target a real project when FIREBASE_PROJECT_ID
+// is set (CD provides GOOGLE_APPLICATION_CREDENTIALS for the Admin SDK).
+const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'demo-simple-crm';
+const isDemo = PROJECT_ID === 'demo-simple-crm';
+if (isDemo) {
+  process.env.FIRESTORE_EMULATOR_HOST ??= '127.0.0.1:8080';
+  process.env.FIREBASE_AUTH_EMULATOR_HOST ??= '127.0.0.1:9099';
+}
 
-const PROJECT_ID = 'demo-simple-crm';
 const COMPANY = 'co-1';
 const EMAIL = 'agent@example.com';
 const PASSWORD = 'password123';

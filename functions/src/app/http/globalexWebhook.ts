@@ -1,4 +1,5 @@
 import { onRequest } from 'firebase-functions/v2/https';
+import { defineSecret } from 'firebase-functions/params';
 
 import { AppError, toAppError, httpStatus } from '../../shared/AppError.js';
 import { GlobalexPayloadSchema } from '../../shared/schemas/globalexPayload.js';
@@ -6,6 +7,12 @@ import { getContainer } from '../container.js';
 import { loadConfig } from '../config.js';
 
 const region = loadConfig().region;
+
+// Accepted X-API-Key value(s), comma-separated, stored in Secret Manager.
+// Set it with: firebase functions:secrets:set GLOBALEX_API_KEYS
+// Its value is injected into process.env.GLOBALEX_API_KEYS at runtime, which
+// loadConfig() reads. See docs/globalex-webhook.md "Transport".
+const GLOBALEX_API_KEYS = defineSecret('GLOBALEX_API_KEYS');
 
 /** Read a string property off an unknown body without tripping unsafe-access. */
 function pick(body: unknown, key: string): string | undefined {
@@ -22,7 +29,9 @@ function pick(body: unknown, key: string): string | undefined {
  * one line (info on apply, warn on drop, error on failure). No business logic
  * lives here. See CLAUDE.md §1 and §5.
  */
-export const globalexWebhook = onRequest({ region }, async (req, res): Promise<void> => {
+export const globalexWebhook = onRequest(
+  { region, secrets: [GLOBALEX_API_KEYS], cors: false },
+  async (req, res): Promise<void> => {
   const c = getContainer();
   const body: unknown = req.body;
   const reqId = c.ids.next();
@@ -55,4 +64,5 @@ export const globalexWebhook = onRequest({ region }, async (req, res): Promise<v
     log.error({ err: e, code: e.code, ctx: e.context }, 'webhook failed');
     if (!res.headersSent) res.status(httpStatus(e.code)).json({ error: e.code });
   }
-});
+  },
+);

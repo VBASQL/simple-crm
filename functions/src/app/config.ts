@@ -9,7 +9,7 @@ import { z } from 'zod';
  * Manager; wiring that is a follow-up.
  */
 const ConfigSchema = z.object({
-  region: z.string().min(1).default('europe-west1'),
+  region: z.string().min(1).default('us-central1'),
   logLevel: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   apiKeys: z
     .string()

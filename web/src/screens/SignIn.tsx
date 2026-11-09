@@ -22,8 +22,9 @@ export function SignIn() {
 
   return (
     <div className="signin">
-      <div className="card signin__form">
-        <h1>{t('auth.title')}</h1>
+      <div className="card signin__card">
+        <div className="signin__logo">C</div>
+        <h1>{t('app.name')}</h1>
         <p className="muted">{t('auth.subtitle')}</p>
         {failed && <p className="error">{t('auth.error')}</p>}
         <button type="button" className="btn btn--primary" onClick={() => void onClick()} disabled={busy}>

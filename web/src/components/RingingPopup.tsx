@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
+import { Avatar } from './Avatar.js';
+import { Icon } from './Icon.js';
 import type { Customer, RingingDoc } from '../types.js';
 
 /**
@@ -50,22 +52,21 @@ export function RingingPopup() {
 
   return (
     <div className="popup" role="dialog" aria-label={t('popup.incoming')}>
-      <div className="popup__label">{t('popup.incoming')}</div>
-      <div className="popup__name">{name}</div>
-      <div className="popup__number">{number}</div>
+      <div className="popup__label">
+        <Icon name="phone" size={13} /> {t('popup.incoming')}
+      </div>
+      <div className="popup__row">
+        <Avatar name={customer?.name ?? number} size={40} />
+        <div>
+          <div className="popup__name">{name}</div>
+          <div className="popup__number">{number}</div>
+        </div>
+      </div>
       <div className="popup__actions">
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={() => navigate(`/customers/${active.customerId}`)}
-        >
+        <button type="button" className="btn btn--primary" onClick={() => navigate(`/customers/${active.customerId}`)}>
           {t('popup.openCustomer')}
         </button>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => setDismissed((prev) => new Set(prev).add(active.id))}
-        >
+        <button type="button" className="btn" onClick={() => setDismissed((prev) => new Set(prev).add(active.id))}>
           {t('popup.dismiss')}
         </button>
       </div>

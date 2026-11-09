@@ -5,6 +5,8 @@ import { AuthProvider, useAuth } from './auth/AuthProvider.js';
 import { SignIn } from './screens/SignIn.js';
 import { AppShell } from './screens/AppShell.js';
 import { CallsLog } from './screens/CallsLog.js';
+import { Customers } from './screens/Customers.js';
+import { Tickets } from './screens/Tickets.js';
 import { CustomerPage } from './screens/CustomerPage.js';
 import { AdminUsers } from './screens/AdminUsers.js';
 
@@ -21,7 +23,9 @@ function Gate() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<CallsLog />} />
+        <Route path="customers" element={<Customers />} />
         <Route path="customers/:customerId" element={<CustomerPage />} />
+        <Route path="tickets" element={<Tickets />} />
         <Route path="admin" element={<AdminUsers />} />
       </Route>
     </Routes>

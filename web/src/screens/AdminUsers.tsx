@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
+import { Avatar } from '../components/Avatar.js';
+import { Icon } from '../components/Icon.js';
 import type { AllowlistEntry } from '../types.js';
 
 export function AdminUsers() {
@@ -56,7 +58,9 @@ export function AdminUsers() {
 
   return (
     <section>
-      <h1>{t('admin.title')}</h1>
+      <div className="page-head">
+        <h1>{t('admin.title')}</h1>
+      </div>
 
       <form className="card admin__form" onSubmit={(e) => void onAdd(e)}>
         <input
@@ -75,29 +79,35 @@ export function AdminUsers() {
       {entries.length === 0 ? (
         <p className="muted">{t('admin.empty')}</p>
       ) : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>{t('admin.email')}</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((u) => (
-              <tr key={u.email}>
-                <td>
-                  {u.email}
-                  {u.email === profile?.email && <span className="muted"> {t('admin.you')}</span>}
-                </td>
-                <td style={{ textAlign: 'end' }}>
-                  <button type="button" className="btn" onClick={() => void onRemove(u.email)}>
-                    {t('admin.remove')}
-                  </button>
-                </td>
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>{t('admin.email')}</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {entries.map((u) => (
+                <tr key={u.email}>
+                  <td>
+                    <div className="cell-main">
+                      <Avatar name={u.email} size={28} />
+                      <span>{u.email}</span>
+                      {u.email === profile?.email && <span className="muted">{t('admin.you')}</span>}
+                    </div>
+                  </td>
+                  <td style={{ textAlign: 'end' }}>
+                    <button type="button" className="btn btn--sm" onClick={() => void onRemove(u.email)}>
+                      <Icon name="trash" size={15} />
+                      {t('admin.remove')}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );

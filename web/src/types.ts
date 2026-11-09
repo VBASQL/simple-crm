@@ -59,6 +59,9 @@ export interface Customer {
   readonly phones: readonly string[];
   readonly emails: readonly string[];
   readonly source: 'phone' | 'email' | 'manual';
+  readonly tags: readonly string[];
+  readonly createdAt?: Date;
+  readonly lastContactAt?: Date;
 }
 
 export interface Ticket {

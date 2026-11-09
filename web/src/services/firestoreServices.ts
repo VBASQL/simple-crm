@@ -34,6 +34,8 @@ export type Unsubscribe = () => void;
 export interface Services {
   subscribeRinging(companyId: string, cb: (docs: RingingDoc[]) => void): Unsubscribe;
   subscribeRecentCalls(companyId: string, cb: (calls: Call[]) => void): Unsubscribe;
+  subscribeCustomers(companyId: string, cb: (customers: Customer[]) => void): Unsubscribe;
+  subscribeTickets(companyId: string, cb: (tickets: Ticket[]) => void): Unsubscribe;
   /** Resolve an allow-listed profile by email; null → not on the allow-list. */
   getProfileByEmail(email: string): Promise<UserProfile | null>;
   getCustomer(id: string): Promise<Customer | null>;
@@ -89,6 +91,9 @@ function mapCustomer(id: string, d: DocumentData): Customer {
     phones: arr(d.phones),
     emails: arr(d.emails),
     source: source === 'email' || source === 'manual' ? source : 'phone',
+    tags: arr(d.tags),
+    createdAt: date(d.createdAt),
+    lastContactAt: date(d.lastContactAt),
   };
 }
 
@@ -152,6 +157,24 @@ export function createFirestoreServices(db: Firestore): Services {
         companyId: str(d.companyId) ?? '',
         name: str(d.name),
       };
+    },
+
+    subscribeCustomers(companyId, cb) {
+      const q = query(collection(db, 'customers'), where('companyId', '==', companyId));
+      return onSnapshot(q, (snap) =>
+        cb(
+          snap.docs
+            .map((s) => mapCustomer(s.id, s.data()))
+            .sort((a, b) => (b.lastContactAt?.getTime() ?? 0) - (a.lastContactAt?.getTime() ?? 0)),
+        ),
+      );
+    },
+
+    subscribeTickets(companyId, cb) {
+      const q = query(collection(db, 'tickets'), where('companyId', '==', companyId));
+      return onSnapshot(q, (snap) =>
+        cb(snap.docs.map((s) => mapTicket(s.id, s.data())).sort(byTimeDesc)),
+      );
     },
 
     async getCustomer(id) {

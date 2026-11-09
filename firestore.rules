@@ -30,11 +30,16 @@ service cloud.firestore {
       return isAllowed() && companyId == myCompanyId();
     }
 
-    // Each user may read only their own allow-list entry. Entries are managed
-    // out-of-band (Admin SDK / seed); no client writes.
+    // Allow-list. A user may read their own entry; an admin may read and
+    // manage every entry in their own company (the in-app Users screen).
+    // An admin cannot grant access to a different company.
     match /allowlist/{email} {
-      allow read: if request.auth != null && request.auth.token.email == email;
-      allow write: if false;
+      allow read: if request.auth != null
+                  && (request.auth.token.email == email || (isAdmin() && resource.data.companyId == myCompanyId()));
+      allow create, update: if isAdmin()
+                  && request.resource.data.companyId == myCompanyId()
+                  && request.resource.data.role in ['agent', 'admin'];
+      allow delete: if isAdmin() && resource.data.companyId == myCompanyId();
     }
 
     // Company config is readable by its members, writable by functions only.

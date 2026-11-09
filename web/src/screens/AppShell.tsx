@@ -17,6 +17,7 @@ export function AppShell() {
         </Link>
         <nav className="shell__nav">
           <Link to="/">{t('nav.calls')}</Link>
+          {profile?.role === 'admin' && <Link to="/admin">{t('nav.admin')}</Link>}
         </nav>
         <div className="shell__spacer" />
         <button type="button" className="btn btn--ghost" onClick={() => setLocale(other)}>

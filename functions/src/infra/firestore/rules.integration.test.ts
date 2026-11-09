@@ -7,7 +7,7 @@ import {
   assertSucceeds,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-crm-rules';
 
@@ -64,5 +64,21 @@ describe('Firestore security rules', () => {
 
   it('allows an admin to write a did in their company', async () => {
     await assertSucceeds(setDoc(doc(admin(), 'dids', 'd1'), { companyId: 'co-1', number: '+97237654321' }));
+  });
+
+  it('lets an admin add a user to their own company', async () => {
+    await assertSucceeds(setDoc(doc(admin(), 'allowlist', 'new@co1.com'), { companyId: 'co-1', role: 'agent' }));
+  });
+
+  it('stops an admin granting access to another company', async () => {
+    await assertFails(setDoc(doc(admin(), 'allowlist', 'x@co2.com'), { companyId: 'co-2', role: 'agent' }));
+  });
+
+  it('stops a non-admin from adding users', async () => {
+    await assertFails(setDoc(doc(agent(), 'allowlist', 'new@co1.com'), { companyId: 'co-1', role: 'agent' }));
+  });
+
+  it('lets an admin remove a user (including themselves)', async () => {
+    await assertSucceeds(deleteDoc(doc(admin(), 'allowlist', 'admin@co1.com')));
   });
 });

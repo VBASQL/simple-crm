@@ -157,7 +157,8 @@ firebase emulators:exec --only firestore --project demo-simple-crm "npm run migr
 
 ## Not yet (see docs/build-plan.md phases)
 
-Recording copy to Cloud Storage, voicemail audio, email intake, admin screens,
-FCM push, retention jobs, and real-project credentials. Two open questions
+Recording copy to Cloud Storage, voicemail audio, email intake, the remaining
+admin screens (DIDs, keyword rules), FCM push, and retention jobs. (In-app
+**Users** admin — add/remove allow-listed Google accounts — is done.) Two open questions
 remain with Globalex (voicemail audio location, recording-link auth/expiry) —
 see `docs/globalex-webhook.md`.

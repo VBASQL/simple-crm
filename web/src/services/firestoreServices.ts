@@ -1,11 +1,13 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   limit,
   onSnapshot,
   orderBy,
   query,
+  setDoc,
   where,
   Timestamp,
   type Firestore,
@@ -13,11 +15,13 @@ import {
 } from 'firebase/firestore';
 
 import type {
+  AllowlistEntry,
   Call,
   CallDirection,
   CallStatus,
   Customer,
   RingingDoc,
+  Role,
   Ticket,
   TicketStatus,
   TimelineEvent,
@@ -37,6 +41,10 @@ export interface Services {
   subscribeCustomerCalls(companyId: string, customerId: string, cb: (calls: Call[]) => void): Unsubscribe;
   subscribeCustomerTickets(companyId: string, customerId: string, cb: (t: Ticket[]) => void): Unsubscribe;
   subscribeCustomerEvents(companyId: string, customerId: string, cb: (e: TimelineEvent[]) => void): Unsubscribe;
+  // Admin: manage the allow-list (admins only; enforced by security rules).
+  subscribeAllowlist(companyId: string, cb: (entries: AllowlistEntry[]) => void): Unsubscribe;
+  addUser(email: string, companyId: string, role: Role): Promise<void>;
+  removeUser(email: string): Promise<void>;
 }
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
@@ -179,6 +187,29 @@ export function createFirestoreServices(db: Firestore): Services {
         where('customerId', '==', customerId),
       );
       return onSnapshot(q, (snap) => cb(snap.docs.map((s) => mapEvent(s.id, s.data())).sort(byTimeDesc)));
+    },
+
+    subscribeAllowlist(companyId, cb) {
+      const q = query(collection(db, 'allowlist'), where('companyId', '==', companyId));
+      return onSnapshot(q, (snap) =>
+        cb(
+          snap.docs
+            .map((s) => ({
+              email: s.id,
+              companyId: str(s.data().companyId) ?? '',
+              role: str(s.data().role) === 'admin' ? ('admin' as const) : ('agent' as const),
+            }))
+            .sort((a, b) => a.email.localeCompare(b.email)),
+        ),
+      );
+    },
+
+    async addUser(email, companyId, role) {
+      await setDoc(doc(db, 'allowlist', email.trim().toLowerCase()), { companyId, role });
+    },
+
+    async removeUser(email) {
+      await deleteDoc(doc(db, 'allowlist', email));
     },
   };
 }

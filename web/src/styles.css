@@ -71,6 +71,11 @@ h2 { font-size: 1.05rem; margin: 0 0 0.75rem; }
 .row { cursor: pointer; }
 .row:hover { background: #f8fafc; }
 
+/* Admin form */
+.admin__form { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+.admin__form input, .admin__form select { padding: 0.45rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.admin__form input { min-width: 240px; flex: 1; }
+
 /* Lists */
 .list, .timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
 .list li, .timeline li { display: flex; align-items: center; gap: 0.6rem; }

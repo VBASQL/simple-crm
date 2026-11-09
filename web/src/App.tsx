@@ -6,6 +6,7 @@ import { SignIn } from './screens/SignIn.js';
 import { AppShell } from './screens/AppShell.js';
 import { CallsLog } from './screens/CallsLog.js';
 import { CustomerPage } from './screens/CustomerPage.js';
+import { AdminUsers } from './screens/AdminUsers.js';
 
 function Loading() {
   const { t } = useI18n();
@@ -21,6 +22,7 @@ function Gate() {
       <Route element={<AppShell />}>
         <Route index element={<CallsLog />} />
         <Route path="customers/:customerId" element={<CustomerPage />} />
+        <Route path="admin" element={<AdminUsers />} />
       </Route>
     </Routes>
   );

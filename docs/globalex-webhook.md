@@ -226,3 +226,12 @@ fields on.
 Rules: writes are merges on `calls/{call_id}`; an event with `timestamp`
 older than the stored status is ignored; unknown DID → log at `warn` and
 drop, never auto-create a company; respond 200 within 1 s, then process.
+
+**Inbound field mapping.** Globalex is the provider; we parse whatever their
+webhook sends. The schema accepts each field's native name and the aliases
+listed in the Field catalogue above (e.g. `uniqueid`/`root_uniqueid` →
+`call_id`, `calleridnum`/`src`/`source` → `caller_number`, `did`/`DID_number`
+→ `did_number`, `billsec` → `talk_time`), mapping them onto the canonical keys
+before validation, so no bespoke per-field template is required on their side.
+The `event` discriminator is still set per trigger (ring/answer/hangup/cdr/dtmf)
+as Globalex's own webhook builder defines.

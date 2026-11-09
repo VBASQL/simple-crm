@@ -40,4 +40,36 @@ describe('GlobalexPayloadSchema', () => {
     expect(GlobalexPayloadSchema.safeParse({ event: 'bogus', call_id: 'x' }).success).toBe(false);
     expect(GlobalexPayloadSchema.safeParse({ event: 'ring', call_id: '' }).success).toBe(false);
   });
+
+  it("accepts Globalex's native field names (aliases)", () => {
+    const parsed = GlobalexPayloadSchema.parse({
+      event: 'ring',
+      uniqueid: '1763328773.1',
+      calleridnum: '0521234567',
+      calleridname: 'Dana',
+      did: '037654321',
+      answeringExtension: '201',
+      queueName: 'support',
+      billsec: '42',
+      applicationType: 'Queue',
+    });
+    expect(parsed.call_id).toBe('1763328773.1');
+    expect(parsed.caller_number).toBe('0521234567');
+    expect(parsed.caller_name).toBe('Dana');
+    expect(parsed.did_number).toBe('037654321');
+    expect(parsed.answering_extension).toBe('201');
+    expect(parsed.queue).toBe('support');
+    expect(parsed.talk_time).toBe('42');
+    expect(parsed.application_type).toBe('Queue');
+  });
+
+  it('prefers the canonical key when both canonical and alias are present', () => {
+    const parsed = GlobalexPayloadSchema.parse({
+      event: 'cdr',
+      call_id: 'canonical',
+      uniqueid: 'alias',
+      disposition: 'ANSWERED',
+    });
+    expect(parsed.call_id).toBe('canonical');
+  });
 });

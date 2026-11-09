@@ -100,6 +100,12 @@ Deploy runs entirely in GitHub Actions — no credentials touch any dev machine.
 The baseline deploy (Firestore rules + indexes and Hosting) works on the
 **free Spark plan**; Cloud Functions are opt-in (they need the Blaze plan).
 
+**Automated setup.** `scripts/provision-firebase.sh` does all of the below —
+creates the project, enables Auth + Firestore, registers the web app, creates a
+deploy service account, and sets the GitHub secrets — using your own gcloud /
+firebase / gh logins. Run `bash scripts/provision-firebase.sh <project-id>`,
+then merge to `main`. The manual steps are below if you prefer.
+
 **One-time Firebase console setup**
 
 1. Create a project (console.firebase.google.com).

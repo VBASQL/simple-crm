@@ -12,7 +12,7 @@ state; if it does not answer a question, stop and ask.
 
 
 Stack: TypeScript (strict), Firebase Cloud Functions 2nd gen, Firestore,
-Cloud Storage, Firebase Auth, React SPA on Firebase Hosting. Node 20.
+Cloud Storage, Firebase Auth, React SPA on Firebase Hosting. Node 22.
 
 ## 1. Non-negotiables
 

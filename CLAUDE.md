@@ -24,6 +24,7 @@ Cloud Storage, Firebase Auth, React SPA on Firebase Hosting. Node 22.
 6. **Reusable means tested in isolation.** Every service has unit tests with fakes for its ports; no test touches real Firestore except the explicit `*.integration.test.ts` suite run against the emulator.
 7. **Don't repeat what exists.** Before writing a helper, search `src/shared` and `src/domain`. Before adding a type, search for the field names. Duplication is a review blocker.
 8. **Ask, don't assume.** If the Globalex contract in `docs/globalex-webhook.md` does not answer a question, stop and ask; do not invent fields or behaviours.
+9. **Engine-first, engine-pure.** Build the engine (the `domain/` core) before any plumbing, and keep it pure: pure functions, deterministic, no I/O, no Firebase, no framework, no module-level singletons, no `Date.now()`/`randomUUID()` — everything external arrives through injected ports. It stays TypeScript (strict) for compile-time safety, but must run and be unit-tested with only the fakes in `test/`. The engine never depends on the app or infra; the app and infra depend on it.
 
 ## 2. Layout
 
@@ -156,6 +157,8 @@ One request = one log context = one error log at most.
 
 ## 8. Working conventions
 
+- **Comment the _why_, generously.** Every non-obvious decision carries a comment that gives the reason, the trade-off, or the contract/edge case it guards — not a paraphrase of the code. Prefer one honest "why" line over three "what" lines. Rationale lives in the file so the next change can see it; a reviewer should never have to reverse-engineer intent.
+- **Never destroy the reason on a rewrite.** When you replace code with another version, carry its rationale forward: keep the "why" comments and the edge cases they protect, or restate them in the new code. If a reason genuinely no longer applies, remove it deliberately and say so in the commit message — never silently drop a comment, a guard, or the behaviour it protected while "cleaning up".
 - Small PR-sized changes; one concern per commit; commit message states the behaviour change, not the files touched.
 - Add a port before adding an adapter; add a fake before adding a test.
 - When changing a Firestore shape, update `domain/*/types.ts`, the Zod schema, the fake repo and the fixture in the same change.

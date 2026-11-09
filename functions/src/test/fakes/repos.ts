@@ -4,6 +4,8 @@ import type { CallRepo } from '../../domain/ports/CallRepo.js';
 import type { TicketRepo } from '../../domain/ports/TicketRepo.js';
 import type { EventRepo } from '../../domain/ports/EventRepo.js';
 import type { RingingRepo } from '../../domain/ports/RingingRepo.js';
+import type { RawEventStore } from '../../domain/ports/RawEventStore.js';
+import type { GlobalexPayload } from '../../shared/schemas/globalexPayload.js';
 import type { Company } from '../../domain/companies/types.js';
 import type { Customer } from '../../domain/customers/types.js';
 import type { Call, RingingDoc } from '../../domain/calls/types.js';
@@ -105,5 +107,20 @@ export class InMemoryRingingRepo implements RingingRepo {
   }
   async delete(callId: string): Promise<void> {
     this.byId.delete(callId);
+  }
+}
+
+export class InMemoryRawEventStore implements RawEventStore {
+  readonly captured: { id: string; raw: unknown; event: GlobalexPayload; processed: boolean }[] = [];
+  private seq = 0;
+
+  async capture(rawBody: unknown, event: GlobalexPayload): Promise<string> {
+    const id = `inbox-${(this.seq += 1)}`;
+    this.captured.push({ id, raw: rawBody, event, processed: false });
+    return id;
+  }
+  async markProcessed(id: string): Promise<void> {
+    const row = this.captured.find((r) => r.id === id);
+    if (row) row.processed = true;
   }
 }

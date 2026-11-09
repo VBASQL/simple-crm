@@ -7,4 +7,5 @@ export {
   InMemoryTicketRepo,
   InMemoryEventRepo,
   InMemoryRingingRepo,
+  InMemoryRawEventStore,
 } from './repos.js';

@@ -49,10 +49,19 @@ export const globalexWebhook = onRequest(
       });
     }
 
+    // Durably capture the raw event BEFORE acking, so nothing is lost even for
+    // an unmapped DID or if processing later fails (it is replayable).
+    const rawId = await c.rawEvents.capture(body, parsed.data, { receivedAt: started, reqId });
+
     // Acknowledge before doing the work (docs/globalex-webhook.md: 200 within 1 s).
     res.status(200).end();
 
     const outcome = await c.callService.handle(parsed.data);
+    await c.rawEvents.markProcessed(rawId, {
+      result: outcome.result,
+      reason: outcome.reason ?? null,
+      companyId: outcome.companyId ?? null,
+    });
     const ms = c.clock.now().getTime() - started.getTime();
     if (outcome.result === 'ignored') {
       log.warn({ outcome, ms }, 'webhook dropped');

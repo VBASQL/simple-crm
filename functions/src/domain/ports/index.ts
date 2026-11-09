@@ -8,3 +8,4 @@ export type { TicketRepo } from './TicketRepo.js';
 export type { EventRepo } from './EventRepo.js';
 export type { RingingRepo } from './RingingRepo.js';
 export type { FileStore, StoredFile } from './FileStore.js';
+export type { RawEventStore, RawEventMeta } from './RawEventStore.js';

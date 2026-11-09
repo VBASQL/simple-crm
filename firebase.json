@@ -12,7 +12,7 @@
     "public": "web/dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
-      { "source": "/api/globalexWebhook", "function": "globalexWebhook" },
+      { "source": "/api/globalexWebhook", "function": { "functionId": "globalexWebhook", "region": "me-west1" } },
       { "source": "**", "destination": "/index.html" }
     ]
   },

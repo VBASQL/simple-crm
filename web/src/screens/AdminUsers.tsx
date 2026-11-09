@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
-import type { AllowlistEntry, Role } from '../types.js';
+import type { AllowlistEntry } from '../types.js';
 
 export function AdminUsers() {
   const { profile } = useAuth();
@@ -11,7 +11,6 @@ export function AdminUsers() {
 
   const [entries, setEntries] = useState<AllowlistEntry[]>([]);
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<Role>('agent');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,9 +21,8 @@ export function AdminUsers() {
     return services.subscribeAllowlist(companyId, setEntries);
   }, [services, companyId]);
 
-  // Admins only.
-  if (profile?.role !== 'admin' || companyId === undefined) {
-    return <p className="muted">{t('admin.adminsOnly')}</p>;
+  if (companyId === undefined) {
+    return <p className="muted">{t('common.loading')}</p>;
   }
 
   async function onAdd(e: FormEvent) {
@@ -37,9 +35,8 @@ export function AdminUsers() {
     setBusy(true);
     setError(null);
     try {
-      await services.addUser(clean, companyId as string, role);
+      await services.addUser(clean, companyId as string);
       setEmail('');
-      setRole('agent');
     } catch {
       setError(t('admin.writeFailed'));
     } finally {
@@ -69,10 +66,6 @@ export function AdminUsers() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
-        <select value={role} onChange={(e) => setRole(e.target.value === 'admin' ? 'admin' : 'agent')}>
-          <option value="agent">{t('role.agent')}</option>
-          <option value="admin">{t('role.admin')}</option>
-        </select>
         <button type="submit" className="btn btn--primary" disabled={busy}>
           {t('admin.add')}
         </button>
@@ -86,7 +79,6 @@ export function AdminUsers() {
           <thead>
             <tr>
               <th>{t('admin.email')}</th>
-              <th>{t('admin.role')}</th>
               <th />
             </tr>
           </thead>
@@ -95,10 +87,7 @@ export function AdminUsers() {
               <tr key={u.email}>
                 <td>
                   {u.email}
-                  {u.email === profile.email && <span className="muted"> {t('admin.you')}</span>}
-                </td>
-                <td>
-                  <span className={`badge badge--${u.role === 'admin' ? 'open' : 'closed'}`}>{t(`role.${u.role}`)}</span>
+                  {u.email === profile?.email && <span className="muted"> {t('admin.you')}</span>}
                 </td>
                 <td style={{ textAlign: 'end' }}>
                   <button type="button" className="btn" onClick={() => void onRemove(u.email)}>

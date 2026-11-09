@@ -14,21 +14,17 @@ export type EventType =
   | 'subscription'
   | 'note';
 
-export type Role = 'agent' | 'admin';
-
 export interface UserProfile {
   /** The allow-listed email (the allowlist doc id). */
   readonly email: string;
   readonly companyId: string;
   readonly name?: string;
-  readonly role: Role;
 }
 
-/** One allow-list entry — an email permitted to sign in, with its role. */
+/** One allow-list entry — an email permitted to sign in. */
 export interface AllowlistEntry {
   readonly email: string;
   readonly companyId: string;
-  readonly role: Role;
 }
 
 export interface RingingDoc {

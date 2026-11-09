@@ -38,9 +38,9 @@ await db.doc(`companies/${COMPANY}`).set({
 });
 await db.doc('dids/d1').set({ number: '+97237654321', companyId: COMPANY, label: 'Main line' });
 
-// Allow-list: each email may sign in with Google and gets this company + role.
+// Allow-list: each email may sign in with Google and gets this company.
 for (const email of ALLOWED_EMAILS) {
-  await db.doc(`allowlist/${email}`).set({ companyId: COMPANY, role: 'admin', name: email.split('@')[0] });
+  await db.doc(`allowlist/${email}`).set({ companyId: COMPANY, name: email.split('@')[0] });
 }
 
 await db.doc(`customers/${CUSTOMER}`).set({

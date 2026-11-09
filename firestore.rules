@@ -1,9 +1,10 @@
 rules_version = '2';
 
-// Call-Driven CRM security rules.
+// Call-Driven CRM security rules — flat access.
 // Access is gated by an allow-list keyed on the signed-in Google email:
-// `allowlist/{email}` → { companyId, role }. No allow-list entry = no access.
-// A user may read/write only documents whose companyId matches their entry.
+// `allowlist/{email}` → { companyId }. No entry = no access. Every allow-listed
+// user has equal, full access to their own company's data (including managing
+// the allow-list). Users in a different company see nothing of this one.
 // Cloud Functions / the seed use the Admin SDK and bypass these rules.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -20,43 +21,35 @@ service cloud.firestore {
     function myCompanyId() {
       return get(allowlistRef()).data.companyId;
     }
-    function myRole() {
-      return get(allowlistRef()).data.role;
-    }
-    function isAdmin() {
-      return isAllowed() && myRole() == 'admin';
-    }
     function sameCompany(companyId) {
       return isAllowed() && companyId == myCompanyId();
     }
 
-    // Allow-list. A user may read their own entry; an admin may read and
-    // manage every entry in their own company (the in-app Users screen).
-    // An admin cannot grant access to a different company.
+    // Allow-list. A user may read their own entry, and any allow-listed user
+    // may read and manage every entry in their own company (the Users screen).
+    // No one can grant access to a different company.
     match /allowlist/{email} {
       allow read: if request.auth != null
-                  && (request.auth.token.email == email || (isAdmin() && resource.data.companyId == myCompanyId()));
-      allow create, update: if isAdmin()
-                  && request.resource.data.companyId == myCompanyId()
-                  && request.resource.data.role in ['agent', 'admin'];
-      allow delete: if isAdmin() && resource.data.companyId == myCompanyId();
+                  && (request.auth.token.email == email || (isAllowed() && resource.data.companyId == myCompanyId()));
+      allow create, update: if sameCompany(request.resource.data.companyId);
+      allow delete: if sameCompany(resource.data.companyId);
     }
 
-    // Company config is readable by its members, writable by functions only.
     match /companies/{companyId} {
       allow read: if sameCompany(companyId);
       allow write: if false;
     }
 
-    // Admin-managed collections: DIDs, email rules.
     match /dids/{didId} {
       allow read: if sameCompany(resource.data.companyId);
-      allow write: if isAdmin() && sameCompany(request.resource.data.companyId);
+      allow create, update: if sameCompany(request.resource.data.companyId);
+      allow delete: if sameCompany(resource.data.companyId);
     }
 
     match /emailRules/{ruleId} {
       allow read: if sameCompany(resource.data.companyId);
-      allow write: if isAdmin() && sameCompany(request.resource.data.companyId);
+      allow create, update: if sameCompany(request.resource.data.companyId);
+      allow delete: if sameCompany(resource.data.companyId);
     }
 
     // Read-only-from-app domain data; functions write via Admin SDK.
@@ -75,7 +68,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Agents may create/edit customers and tickets within their company.
     match /customers/{customerId} {
       allow read: if sameCompany(resource.data.companyId);
       allow create: if sameCompany(request.resource.data.companyId);

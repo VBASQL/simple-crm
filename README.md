@@ -38,7 +38,7 @@ full, binding conventions (DI, error handling, logging, testing).
   out-of-order drop, voicemail detection).
 - Firestore adapters for every port and the `globalexWebhook` Cloud Function
   composition root (auth → validate → ack → one service call → one log line).
-- Firestore security rules (per-company read scoping, admin-only config).
+- Firestore security rules (per-company scoping via an email allow-list).
 
 ## Develop
 
@@ -60,7 +60,8 @@ npm run test:integration   # wraps vitest in `firebase emulators:exec --only fir
 
 This covers the adapter pipeline (`ring → answer → hangup → cdr`, duplicate and
 out-of-order delivery) and the security rules (cross-company read denied,
-non-admin write to `dids` denied). A JVM is required for the emulator.
+a non-allow-listed email denied, no cross-company grants). A JVM is required
+for the emulator.
 
 ## Run the whole thing locally (emulator, no credentials)
 
@@ -80,7 +81,7 @@ cd web && npm install && cp -n .env.example .env.local && npm run dev
 ```
 
 Sign-in is **Google with an allow-list**: only emails present in the Firestore
-`allowlist/{email}` collection get a company/role; everyone else authenticates
+`allowlist/{email}` collection get access; everyone else authenticates
 but is denied all data by the security rules. The SPA connects straight to the
 Auth + Firestore emulators (`web/src/firebase/client.ts`), so no real Firebase
 project is needed. The seed writes a `ringing` doc, so the pop-up fires on

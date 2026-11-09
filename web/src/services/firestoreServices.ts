@@ -21,7 +21,6 @@ import type {
   CallStatus,
   Customer,
   RingingDoc,
-  Role,
   Ticket,
   TicketStatus,
   TimelineEvent,
@@ -41,9 +40,9 @@ export interface Services {
   subscribeCustomerCalls(companyId: string, customerId: string, cb: (calls: Call[]) => void): Unsubscribe;
   subscribeCustomerTickets(companyId: string, customerId: string, cb: (t: Ticket[]) => void): Unsubscribe;
   subscribeCustomerEvents(companyId: string, customerId: string, cb: (e: TimelineEvent[]) => void): Unsubscribe;
-  // Admin: manage the allow-list (admins only; enforced by security rules).
+  // Manage the allow-list (any allow-listed user; enforced by security rules).
   subscribeAllowlist(companyId: string, cb: (entries: AllowlistEntry[]) => void): Unsubscribe;
-  addUser(email: string, companyId: string, role: Role): Promise<void>;
+  addUser(email: string, companyId: string): Promise<void>;
   removeUser(email: string): Promise<void>;
 }
 
@@ -148,12 +147,10 @@ export function createFirestoreServices(db: Firestore): Services {
       const snap = await getDoc(doc(db, 'allowlist', email));
       if (!snap.exists()) return null;
       const d = snap.data();
-      const role = str(d.role) === 'admin' ? 'admin' : 'agent';
       return {
         email,
         companyId: str(d.companyId) ?? '',
         name: str(d.name),
-        role,
       };
     },
 
@@ -194,18 +191,14 @@ export function createFirestoreServices(db: Firestore): Services {
       return onSnapshot(q, (snap) =>
         cb(
           snap.docs
-            .map((s) => ({
-              email: s.id,
-              companyId: str(s.data().companyId) ?? '',
-              role: str(s.data().role) === 'admin' ? ('admin' as const) : ('agent' as const),
-            }))
+            .map((s) => ({ email: s.id, companyId: str(s.data().companyId) ?? '' }))
             .sort((a, b) => a.email.localeCompare(b.email)),
         ),
       );
     },
 
-    async addUser(email, companyId, role) {
-      await setDoc(doc(db, 'allowlist', email.trim().toLowerCase()), { companyId, role });
+    async addUser(email, companyId) {
+      await setDoc(doc(db, 'allowlist', email.trim().toLowerCase()), { companyId });
     },
 
     async removeUser(email) {

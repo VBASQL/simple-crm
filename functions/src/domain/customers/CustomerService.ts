@@ -50,4 +50,36 @@ export class CustomerService {
     const created = await this.customers.create(customer);
     return { customer: created, created: true };
   }
+
+  /**
+   * The customer for a call whose caller id is withheld (anonymous/private).
+   * Such calls can't be matched by number, so instead of creating a new record
+   * per call — or dropping the call entirely — they share one reusable
+   * "Unknown caller" customer per company, keyed by a deterministic id so the
+   * same bucket is found every time.
+   */
+  async findOrCreateAnonymous(companyId: string): Promise<CustomerOutcome> {
+    const now = this.clock.now();
+    const id = `anon-${companyId}`;
+    const existing = await this.customers.getById(id);
+    if (existing) {
+      const touched: Customer = { ...existing, lastContactAt: now };
+      await this.customers.save(touched);
+      return { customer: touched, created: false };
+    }
+
+    const customer: Customer = {
+      id,
+      companyId,
+      name: 'Unknown caller',
+      phones: [],
+      emails: [],
+      source: 'phone',
+      createdAt: now,
+      lastContactAt: now,
+      tags: [],
+    };
+    const created = await this.customers.create(customer);
+    return { customer: created, created: true };
+  }
 }

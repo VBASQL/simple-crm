@@ -167,4 +167,35 @@ describe('CallService.handle', () => {
 
     expect(calls.byId.get(CALL_ID)?.ivrInputs?.dtmf).toBe('3');
   });
+
+  it.each(['outbound', 'internal'])('does not route a %s ring (no customer, no ticket, no call)', async (direction) => {
+    const { svc, customers, calls, tickets, ringing } = makeSut();
+    const out = await svc.handle(payload('ring', { direction }));
+
+    expect(out).toMatchObject({ result: 'ignored', reason: `${direction}_not_routed` });
+    expect(customers.createCount).toBe(0);
+    expect(tickets.createCount).toBe(0);
+    expect(calls.byId.size).toBe(0);
+    expect(ringing.byId.size).toBe(0);
+  });
+
+  it('routes an anonymous (withheld) inbound caller to the company "Unknown caller" bucket', async () => {
+    const { svc, customers, calls, ringing } = makeSut();
+    const out = await svc.handle(payload('ring', { caller_number: '' }));
+
+    expect(out).toMatchObject({ result: 'applied', customer: 'created', ticket: 'created' });
+    expect(customers.byId.has('anon-co-1')).toBe(true);
+    const call = calls.byId.get(CALL_ID);
+    expect(call?.customerId).toBe('anon-co-1');
+    expect(call?.callerNumber).toBeUndefined();
+    expect(ringing.byId.get(CALL_ID)?.callerNumber).toBeUndefined();
+  });
+
+  it('reuses the single anonymous bucket across calls', async () => {
+    const { svc, customers } = makeSut();
+    await svc.handle(payload('ring', { caller_number: '', call_id: 'anon-a' }));
+    await svc.handle(payload('ring', { caller_number: '', call_id: 'anon-b' }));
+
+    expect(customers.createCount).toBe(1);
+  });
 });

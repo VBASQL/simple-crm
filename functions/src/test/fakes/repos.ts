@@ -39,6 +39,9 @@ export class InMemoryCustomerRepo implements CustomerRepo {
   readonly byId = new Map<string, Customer>();
   createCount = 0;
 
+  async getById(id: string): Promise<Customer | null> {
+    return this.byId.get(id) ?? null;
+  }
   async findByPhone(companyId: string, phoneE164: string): Promise<Customer | null> {
     for (const c of this.byId.values()) {
       if (c.companyId === companyId && c.phones.includes(phoneE164)) return c;

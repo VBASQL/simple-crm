@@ -6,6 +6,12 @@ import { optString, requireDate } from './mappers.js';
 export class FirestoreCustomerRepo implements CustomerRepo {
   constructor(private readonly db: Firestore) {}
 
+  async getById(id: string): Promise<Customer | null> {
+    const doc = await this.db.collection('customers').doc(id).get();
+    const data = doc.data();
+    return data === undefined ? null : this.map(doc.id, data);
+  }
+
   async findByPhone(companyId: string, phoneE164: string): Promise<Customer | null> {
     const snap = await this.db
       .collection('customers')

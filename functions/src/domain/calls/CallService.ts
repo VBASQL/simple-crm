@@ -73,14 +73,23 @@ export class CallService {
   // ---- ring: create/resume everything and fire the pop-up --------------------
 
   private async handleRing(p: GlobalexPayload): Promise<HandleOutcome> {
+    // Only inbound calls are a customer interaction we can route. did_number is
+    // inbound-only (docs/globalex-webhook.md), so outbound/internal calls have no
+    // defined tenant/customer resolution here — drop them (still captured in the
+    // inbox) rather than invent one, and never wrongly open a ticket for them.
+    const direction = p.direction ?? 'inbound';
+    if (direction !== 'inbound') return this.ignored(p, `${direction}_not_routed`);
+
     const did = p.did_number ? this.phones.normalize(p.did_number) : null;
     if (did === null) return this.ignored(p, 'missing_or_unparseable_did');
 
-    const caller = p.caller_number ? this.phones.normalize(p.caller_number) : null;
-    if (caller === null) return this.ignored(p, 'missing_or_unparseable_caller');
-
     const company = await this.companies.resolveByDid(did);
     if (company === null) return this.ignored(p, 'unknown_did');
+
+    // Caller id may be withheld (private/anonymous). We must not lose the call,
+    // so an unmatchable caller attaches to the company's single "Unknown caller"
+    // bucket; a real number matches or creates a customer as usual.
+    const caller = p.caller_number ? this.phones.normalize(p.caller_number) : null;
 
     const existing = await this.calls.get(p.call_id);
     const now = this.eventTime(p);
@@ -88,11 +97,14 @@ export class CallService {
       return { event: 'ring', callId: p.call_id, result: 'ignored', reason: 'out_of_order', companyId: company.id };
     }
 
-    const { customer, created } = await this.customers.findOrCreateByPhone({
-      companyId: company.id,
-      phoneE164: caller,
-      ...(p.caller_name !== undefined ? { name: p.caller_name } : {}),
-    });
+    const { customer, created } =
+      caller === null
+        ? await this.customers.findOrCreateAnonymous(company.id)
+        : await this.customers.findOrCreateByPhone({
+            companyId: company.id,
+            phoneE164: caller,
+            ...(p.caller_name !== undefined ? { name: p.caller_name } : {}),
+          });
 
     const { ticket, resumed } = await this.tickets.openOrResume({
       companyId: company.id,
@@ -107,13 +119,13 @@ export class CallService {
       id: p.call_id,
       companyId: company.id,
       customerId: customer.id,
-      direction: this.directionOf(p, existing),
+      direction,
       status,
       lastEventAt: now,
       startTime: existing?.startTime ?? now,
       ticketId: ticket.id,
       didNumber: did,
-      callerNumber: caller,
+      ...(caller !== null ? { callerNumber: caller } : {}),
       ...(existing?.answerTime !== undefined ? { answerTime: existing.answerTime } : {}),
     };
     await this.calls.upsert(call);
@@ -124,7 +136,7 @@ export class CallService {
       customerId: customer.id,
       startedAt: now,
       expiresAt: new Date(now.getTime() + COMPANY_DEFAULTS.ringingTtlSeconds * 1000),
-      callerNumber: caller,
+      ...(caller !== null ? { callerNumber: caller } : {}),
       didNumber: did,
       ...(p.extension !== undefined ? { extension: p.extension } : {}),
     });
@@ -223,22 +235,29 @@ export class CallService {
       callerNumber = existing.callerNumber;
       didNumber = existing.didNumber;
     } else {
+      // No call doc yet (CDR arrived before/without a ring). We can only
+      // bootstrap an inbound call: did_number resolves the tenant and the caller
+      // is the customer. Outbound/internal have no defined resolution here (see
+      // handleRing), so drop them — the raw event is still in the inbox.
+      if (direction !== 'inbound') return this.ignored(p, `${direction}_not_routed`);
       const did = p.did_number ? this.phones.normalize(p.did_number) : null;
-      const caller = p.caller_number ? this.phones.normalize(p.caller_number) : null;
-      if (did === null || caller === null) return this.ignored(p, 'cdr_missing_identity');
+      if (did === null) return this.ignored(p, 'cdr_missing_did');
       const company: Company | null = await this.companies.resolveByDid(did);
       if (company === null) return this.ignored(p, 'unknown_did');
-      const customer = await this.bootstrapCustomer(company, p, caller);
+
+      // Anonymous caller → the company's "Unknown caller" bucket, as on ring.
+      const caller = p.caller_number ? this.phones.normalize(p.caller_number) : null;
+      const customer =
+        caller === null
+          ? await this.customers.findOrCreateAnonymous(company.id)
+          : await this.bootstrapCustomer(company, p, caller);
       companyId = company.id;
       customerId = customer.customer.id;
-      callerNumber = caller;
       didNumber = did;
       created = customer.created;
-      // Inbound opens/resumes a ticket; outbound never auto-opens one.
-      if (direction !== 'outbound') {
-        const t = await this.tickets.openOrResume({ companyId, customerId, openedBy: 'call' });
-        ticketId = t.ticket.id;
-      }
+      if (caller !== null) callerNumber = caller;
+      const t = await this.tickets.openOrResume({ companyId, customerId, openedBy: 'call' });
+      ticketId = t.ticket.id;
     }
 
     const voicemail = this.isVoicemail(p);

@@ -71,6 +71,9 @@ export interface Services {
   // timestamps. The engine keeps its own Admin-SDK write path.
   setTicketStatus(ticketId: string, status: TicketStatus): Promise<void>;
   setTicketSubject(ticketId: string, subject: string): Promise<void>;
+  /** Pin / unpin so a record sorts to the top of its list. */
+  setTicketPinned(ticketId: string, pinned: boolean): Promise<void>;
+  setCustomerPinned(customerId: string, pinned: boolean): Promise<void>;
   /**
    * Append a manual entry to the timeline (and bump the ticket when one is
    * given). Covers a plain note and anything not captured automatically — a
@@ -138,6 +141,7 @@ function mapCustomer(id: string, d: DocumentData): Customer {
     tags: arr(d.tags),
     createdAt: date(d.createdAt),
     lastContactAt: date(d.lastContactAt),
+    ...(d.pinned === true ? { pinned: true } : {}),
   };
 }
 
@@ -150,8 +154,13 @@ function mapTicket(id: string, d: DocumentData): Ticket {
     subject: str(d.subject),
     openedAt: date(d.openedAt),
     lastActivityAt: date(d.lastActivityAt),
+    ...(d.pinned === true ? { pinned: true } : {}),
   };
 }
+
+/** Pinned first, then fall back to the caller's ordering (recency). */
+const pinnedFirst = <T extends { pinned?: boolean }>(rest: (a: T, b: T) => number) => (a: T, b: T): number =>
+  (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || rest(a, b);
 
 function mapEvent(id: string, d: DocumentData): TimelineEvent {
   return {
@@ -211,7 +220,7 @@ export function createFirestoreServices(db: Firestore): Services {
         cb(
           snap.docs
             .map((s) => mapCustomer(s.id, s.data()))
-            .sort((a, b) => (b.lastContactAt?.getTime() ?? 0) - (a.lastContactAt?.getTime() ?? 0)),
+            .sort(pinnedFirst((a, b) => (b.lastContactAt?.getTime() ?? 0) - (a.lastContactAt?.getTime() ?? 0))),
         ),
       );
     },
@@ -219,7 +228,7 @@ export function createFirestoreServices(db: Firestore): Services {
     subscribeTickets(companyId, cb) {
       const q = query(collection(db, 'tickets'), where('companyId', '==', companyId));
       return onSnapshot(q, (snap) =>
-        cb(snap.docs.map((s) => mapTicket(s.id, s.data())).sort(byTimeDesc)),
+        cb(snap.docs.map((s) => mapTicket(s.id, s.data())).sort(pinnedFirst(byTimeDesc))),
       );
     },
 
@@ -340,6 +349,15 @@ export function createFirestoreServices(db: Firestore): Services {
 
     async setTicketSubject(ticketId, subject) {
       await updateDoc(doc(db, 'tickets', ticketId), { subject, lastActivityAt: serverTimestamp() });
+    },
+
+    async setTicketPinned(ticketId, pinned) {
+      // Clear the field when unpinning so it never lingers as pinned:false.
+      await updateDoc(doc(db, 'tickets', ticketId), { pinned: pinned ? true : deleteField() });
+    },
+
+    async setCustomerPinned(customerId, pinned) {
+      await updateDoc(doc(db, 'customers', customerId), { pinned: pinned ? true : deleteField() });
     },
 
     async addEntry({ companyId, customerId, ticketId, callId, type = 'note', text, author }) {

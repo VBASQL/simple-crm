@@ -10,6 +10,7 @@ export type IconName =
   | 'logout'
   | 'plus'
   | 'trash'
+  | 'star'
   | 'key';
 
 const PATHS: Record<IconName, string> = {
@@ -24,6 +25,7 @@ const PATHS: Record<IconName, string> = {
   logout: 'M10 17l-1.5-1.5M9 12h11M16 7l4 5-4 5M14 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8',
   plus: 'M12 5v14M5 12h14',
   trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2',
+  star: 'M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8-5.3-2.8-5.3 2.8 1-5.8L3.5 9.7l5.9-.9L12 3.5Z',
   key: 'M15 7a4 4 0 1 1-3.9 5H8v2H6v2H3v-3l5.1-5.1A4 4 0 0 1 15 7ZM16 10h.01',
 };
 

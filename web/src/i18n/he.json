@@ -156,5 +156,8 @@
   "call.openRecording": "פתח בכרטיסייה חדשה",
   "call.notesTitle": "סיכום השיחה",
   "call.notesHint": "תעד מה נאמר בשיחה. ההערות משורשרות לפנייה ולהיסטוריית הלקוח.",
-  "call.noNotes": "עדיין לא תועד דבר בשיחה זו."
+  "call.noNotes": "עדיין לא תועד דבר בשיחה זו.",
+  "action.pin": "הצמד",
+  "action.pinned": "מוצמד",
+  "action.unpin": "בטל הצמדה"
 }

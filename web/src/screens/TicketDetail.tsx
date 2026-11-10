@@ -7,6 +7,7 @@ import { relativeTime, formatDateTime } from '../format.js';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
 import { EntryComposer } from '../components/EntryComposer.js';
+import { PinButton } from '../components/PinButton.js';
 import type { Customer, Ticket, TicketStatus, TimelineEvent } from '../types.js';
 
 const STATUSES: TicketStatus[] = ['open', 'pending', 'closed'];
@@ -128,19 +129,25 @@ export function TicketDetail() {
           </Link>
         </div>
 
-        {/* Status picker — the one action an agent takes most, so it is the
-            most prominent control on the page. */}
-        <div className="segmented" role="group" aria-label={t('ticketDetail.status')}>
-          {STATUSES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              className={`segmented__btn${tk.status === s ? ' is-active' : ''}`}
-              onClick={() => void setStatus(s)}
-            >
-              {t(`ticket.status.${s}`)}
-            </button>
-          ))}
+        <div className="detail-head__actions">
+          <PinButton
+            pinned={tk.pinned === true}
+            onToggle={(next) => void services.setTicketPinned(ticketId, next)}
+          />
+          {/* Status picker — the one action an agent takes most, so it is the
+              most prominent control on the page. */}
+          <div className="segmented" role="group" aria-label={t('ticketDetail.status')}>
+            {STATUSES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`segmented__btn${tk.status === s ? ' is-active' : ''}`}
+                onClick={() => void setStatus(s)}
+              >
+                {t(`ticket.status.${s}`)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

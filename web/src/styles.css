@@ -285,6 +285,13 @@ input:focus, select:focus { outline: 2px solid var(--brand-soft); border-color: 
 .chip--btn:hover { background: var(--surface-2); }
 .chip--btn.is-active { background: var(--brand-soft); color: var(--brand); border-color: transparent; }
 
+/* ---------- Pin ---------- */
+.detail-head__actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.customer-head__actions { margin-inline-start: auto; }
+.pin-btn.is-pinned { background: var(--warn-soft); color: var(--warn-ink); border-color: transparent; }
+.pin-btn.is-pinned svg { fill: currentColor; }
+.cell-main svg { color: var(--ring); fill: var(--ring); }
+
 /* ---------- Call detail ---------- */
 .call-title { display: flex; align-items: center; gap: 0.7rem; }
 .call-title h1 { margin: 0; }

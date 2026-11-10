@@ -73,7 +73,10 @@ export function Tickets() {
                 return (
                   <tr key={tk.id} className="row" onClick={() => navigate(`/tickets/${tk.id}`)}>
                     <td>
-                      <b>{tk.subject ?? t('tickets.noSubject')}</b>
+                      <div className="cell-main">
+                        {tk.pinned === true && <Icon name="star" size={13} />}
+                        <b>{tk.subject ?? t('tickets.noSubject')}</b>
+                      </div>
                     </td>
                     <td>
                       <div className="cell-main">

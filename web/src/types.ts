@@ -69,6 +69,8 @@ export interface Customer {
   readonly tags: readonly string[];
   readonly createdAt?: Date;
   readonly lastContactAt?: Date;
+  /** Agent-set: pinned records sort to the top of lists. */
+  readonly pinned?: boolean;
 }
 
 export interface Ticket {
@@ -79,6 +81,8 @@ export interface Ticket {
   readonly subject?: string;
   readonly openedAt?: Date;
   readonly lastActivityAt?: Date;
+  /** Agent-set: pinned tickets sort to the top of lists. */
+  readonly pinned?: boolean;
 }
 
 export interface TimelineEvent {

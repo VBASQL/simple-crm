@@ -156,5 +156,8 @@
   "call.openRecording": "Open in a new tab",
   "call.notesTitle": "Call notes",
   "call.notesHint": "Record what was discussed. Notes thread into the ticket and the customer's history.",
-  "call.noNotes": "Nothing logged on this call yet."
+  "call.noNotes": "Nothing logged on this call yet.",
+  "action.pin": "Pin",
+  "action.pinned": "Pinned",
+  "action.unpin": "Unpin"
 }

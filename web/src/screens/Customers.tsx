@@ -65,6 +65,7 @@ export function Customers() {
                     <div className="cell-main">
                       <Avatar name={c.name ?? c.phones[0]} size={32} />
                       <b>{c.name ?? t('common.unknownCustomer')}</b>
+                      {c.pinned === true && <Icon name="star" size={13} />}
                     </div>
                   </td>
                   <td className="muted">{c.phones[0] ?? ''}</td>

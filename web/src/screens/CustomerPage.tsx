@@ -7,6 +7,7 @@ import { relativeTime, formatDateTime } from '../format.js';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
 import { EntryComposer } from '../components/EntryComposer.js';
+import { PinButton } from '../components/PinButton.js';
 import type { Call, Customer, Ticket, TimelineEvent } from '../types.js';
 
 type Tab = 'timeline' | 'tickets' | 'calls';
@@ -74,6 +75,14 @@ export function CustomerPage() {
             </div>
           )}
         </div>
+        {customer !== null && (
+          <div className="customer-head__actions">
+            <PinButton
+              pinned={customer.pinned === true}
+              onToggle={(next) => void services.setCustomerPinned(customer.id, next)}
+            />
+          </div>
+        )}
       </div>
 
       <div className="tabs">

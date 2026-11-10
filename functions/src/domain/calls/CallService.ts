@@ -234,12 +234,9 @@ export class CallService {
       ticketId = existing.ticketId;
       callerNumber = existing.callerNumber;
       didNumber = existing.didNumber;
-    } else {
-      // No call doc yet (CDR arrived before/without a ring). We can only
-      // bootstrap an inbound call: did_number resolves the tenant and the caller
-      // is the customer. Outbound/internal have no defined resolution here (see
-      // handleRing), so drop them — the raw event is still in the inbox.
-      if (direction !== 'inbound') return this.ignored(p, `${direction}_not_routed`);
+    } else if (direction === 'inbound') {
+      // Inbound bootstrap (CDR arrived before/without a ring): did_number
+      // resolves the tenant and the caller is the customer.
       const did = p.did_number ? this.phones.normalize(p.did_number) : null;
       if (did === null) return this.ignored(p, 'cdr_missing_did');
       const company: Company | null = await this.companies.resolveByDid(did);
@@ -258,6 +255,36 @@ export class CallService {
       if (caller !== null) callerNumber = caller;
       const t = await this.tickets.openOrResume({ companyId, customerId, openedBy: 'call' });
       ticketId = t.ticket.id;
+    } else if (direction === 'outbound') {
+      // Outbound: Globalex sends no did_number on outbound, so the tenant is the
+      // line we dialled OUT on — the outbound caller id (outbound_callerid, or the
+      // number inside callerid). We map that to a DID exactly as inbound maps
+      // did_number. (Assumes the outbound CID is one of the company's DIDs — the
+      // confirmed account topology; verifiable from any real outbound CDR.)
+      // The customer is the number we dialled (destination_number). No ticket is
+      // auto-opened for outbound (build plan): the agent is prompted at call end.
+      const lineRaw = this.outboundLine(p);
+      const line = lineRaw ? this.phones.normalize(lineRaw) : null;
+      if (line === null) return this.ignored(p, 'outbound_missing_line');
+      const company: Company | null = await this.companies.resolveByDid(line);
+      if (company === null) return this.ignored(p, 'unknown_did');
+
+      // Store the dialled external party as the call's number, so the record
+      // shows the party that matters rather than our own outbound line.
+      const dest = p.destination_number ? this.phones.normalize(p.destination_number) : null;
+      const customer =
+        dest === null
+          ? await this.customers.findOrCreateAnonymous(company.id)
+          : await this.customers.findOrCreateByPhone({ companyId: company.id, phoneE164: dest });
+      companyId = company.id;
+      customerId = customer.customer.id;
+      didNumber = line;
+      created = customer.created;
+      if (dest !== null) callerNumber = dest;
+      // No ticket: outbound is logged on the customer only.
+    } else {
+      // internal — extension-to-extension, not a customer interaction.
+      return this.ignored(p, 'internal_not_routed');
     }
 
     const voicemail = this.isVoicemail(p);
@@ -349,6 +376,20 @@ export class CallService {
 
   private directionOf(p: GlobalexPayload, existing: Call | null): CallDirection {
     return p.direction ?? existing?.direction ?? 'inbound';
+  }
+
+  /**
+   * The line an outbound call was placed on. Prefer `outbound_callerid` (plain
+   * digits); fall back to the number inside `callerid` (`"Company" <0501234567>`).
+   * Returns the raw string to normalise, or undefined when neither is present.
+   */
+  private outboundLine(p: GlobalexPayload): string | undefined {
+    if (p.outbound_callerid !== undefined) return p.outbound_callerid;
+    if (p.callerid !== undefined) {
+      const inAngle = /<([^>]+)>/.exec(p.callerid);
+      return inAngle ? inAngle[1] : p.callerid;
+    }
+    return undefined;
   }
 
   private eventTime(p: GlobalexPayload): Date {

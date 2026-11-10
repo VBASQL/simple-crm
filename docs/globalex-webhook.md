@@ -196,6 +196,8 @@ One endpoint, five triggers, same shape on all; `event` is a fixed literal per t
   "talk_time": "{{talk_time}}",
   "disposition": "{{disposition}}",
   "cause_text": "{{cause_text}}",
+  "callerid": "{{callerid}}",
+  "outbound_callerid": "{{outbound_callerid}}",
   "application_type": "{{applicationType}}",
   "voicemail_box": "{{voicemailBox}}",
   "lastapp": "{{lastapp}}",
@@ -235,3 +237,18 @@ listed in the Field catalogue above (e.g. `uniqueid`/`root_uniqueid` →
 before validation, so no bespoke per-field template is required on their side.
 The `event` discriminator is still set per trigger (ring/answer/hangup/cdr/dtmf)
 as Globalex's own webhook builder defines.
+
+**Direction routing.** We read the `direction` field on every event
+(`inbound` / `outbound` / `internal`).
+- **inbound** — tenant from `did_number`; customer from `caller_number`
+  (withheld caller → the company's "Unknown caller" bucket); open/resume a
+  ticket; fire the pop-up.
+- **outbound** — handled at CDR only (the plan logs outbound, never auto-opens
+  a ticket). `did_number` is inbound-only, so the tenant is the **outbound
+  line**: `outbound_callerid`, else the number inside `callerid`
+  (`"Company" <0501234567>`), normalised and looked up in `dids`. The customer
+  is the dialled party, `destination_number`. This assumes the outbound caller
+  id is one of the company's DIDs (the account topology: Globalex is one
+  account, tenancy is by DID) — verifiable from any real outbound CDR.
+- **internal** — extension-to-extension; not a customer interaction, dropped
+  (still captured in the inbox).

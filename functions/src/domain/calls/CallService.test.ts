@@ -198,4 +198,46 @@ describe('CallService.handle', () => {
 
     expect(customers.createCount).toBe(1);
   });
+
+  it('routes an outbound cdr by the outbound line, customer = dialled number, no ticket', async () => {
+    const { svc, calls, tickets, customers } = makeSut();
+    const out = await svc.handle(
+      payload('cdr', {
+        direction: 'outbound',
+        outbound_callerid: '037654321', // the company DID we called out on → co-1
+        destination_number: '0528889999', // the external party we dialled
+        disposition: 'ANSWERED',
+      }),
+    );
+
+    expect(out).toMatchObject({ result: 'applied', companyId: 'co-1', ticket: 'none' });
+    const call = calls.byId.get(CALL_ID);
+    expect(call?.direction).toBe('outbound');
+    expect(call?.didNumber).toBe(DID_E164);
+    expect(call?.callerNumber).toBe('+972528889999');
+    expect(call?.ticketId).toBeUndefined();
+    expect(tickets.createCount).toBe(0);
+    expect(customers.byId.get(call?.customerId ?? '')?.phones).toContain('+972528889999');
+  });
+
+  it('parses the outbound line out of callerid when outbound_callerid is absent', async () => {
+    const { svc } = makeSut();
+    const out = await svc.handle(
+      payload('cdr', {
+        direction: 'outbound',
+        callerid: '"Acme" <037654321>',
+        destination_number: '0528889999',
+        disposition: 'ANSWERED',
+      }),
+    );
+    expect(out).toMatchObject({ result: 'applied', companyId: 'co-1' });
+  });
+
+  it('drops an outbound cdr whose line is not a known DID', async () => {
+    const { svc } = makeSut();
+    const out = await svc.handle(
+      payload('cdr', { direction: 'outbound', outbound_callerid: '039999999', destination_number: '0528889999' }),
+    );
+    expect(out).toMatchObject({ result: 'ignored', reason: 'unknown_did' });
+  });
 });

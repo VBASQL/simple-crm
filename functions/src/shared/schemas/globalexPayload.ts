@@ -49,6 +49,10 @@ const PASSTHROUGH: readonly string[] = [
   'recording_download_url',
   'recording_filename',
   'client_id',
+  // Outbound caller id — the line a call was placed on. Used to resolve the
+  // tenant for outbound calls (did_number is inbound-only). CDR only.
+  'callerid',
+  'outbound_callerid',
 ];
 
 const isPresent = (v: unknown): boolean => !(v === undefined || (typeof v === 'string' && v.trim().length === 0));
@@ -112,6 +116,8 @@ const GlobalexFields = z
     talk_time: optStr,
     disposition: DispositionSchema,
     cause_text: optStr,
+    callerid: optStr,
+    outbound_callerid: optStr,
     application_type: optStr,
     voicemail_box: optStr,
     lastapp: optStr,

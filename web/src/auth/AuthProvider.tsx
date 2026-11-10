@@ -33,6 +33,8 @@ interface AuthValue {
   readonly companies: readonly CompanyRef[];
   readonly activeCompanyId: string | null;
   setActiveCompany(companyId: string): void;
+  /** Re-resolve the user's companies (e.g. after creating one). */
+  refresh(): Promise<void>;
   signIn(): Promise<void>;
   signOut(): Promise<void>;
 }
@@ -49,6 +51,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Resolve the user's companies (names + the active choice). Shared by the
+  // auth-state listener and refresh(); `keepActive` preserves the current
+  // selection when it is still valid (used after creating a company).
+  async function loadCompaniesFor(email: string, keepActive: string | null): Promise<void> {
+    const membership = await services.getMembership(email);
+    if (membership === null) {
+      setCompanies([]);
+      setActiveCompanyId(null);
+      setName(undefined);
+      return;
+    }
+    setName(membership.name);
+    const refs = await Promise.all(membership.companyIds.map((id) => services.getCompany(id)));
+    setCompanies(refs);
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(activeKey(email));
+    } catch {
+      stored = null;
+    }
+    const prefer = keepActive !== null && membership.companyIds.includes(keepActive) ? keepActive : null;
+    setActiveCompanyId(prefer ?? (stored !== null && membership.companyIds.includes(stored) ? stored : refs[0]?.id ?? null));
+  }
+
   useEffect(() => {
     let cancelled = false;
     const unsub = onAuthStateChanged(auth, (next) => {
@@ -62,35 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       setLoading(true);
-      void services
-        .getMembership(email)
-        .then(async (membership) => {
-          if (membership === null) {
-            if (!cancelled) {
-              setCompanies([]);
-              setActiveCompanyId(null);
-            }
-            return;
-          }
-          setName(membership.name);
-          // Resolve each company's display name for the switcher.
-          const refs = await Promise.all(membership.companyIds.map((id) => services.getCompany(id)));
-          if (cancelled) return;
-          setCompanies(refs);
-          // Keep the last-used company when it is still accessible; otherwise
-          // fall back to the first one the user belongs to.
-          let stored: string | null = null;
-          try {
-            stored = localStorage.getItem(activeKey(email));
-          } catch {
-            stored = null;
-          }
-          const active = stored !== null && membership.companyIds.includes(stored) ? stored : (refs[0]?.id ?? null);
-          setActiveCompanyId(active);
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
+      void loadCompaniesFor(email, null).finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     });
     return () => {
       cancelled = true;
@@ -99,6 +99,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // services is stable (module singleton); re-subscribing per change is wrong.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function refresh(): Promise<void> {
+    const email = user?.email;
+    if (email === undefined || email === null) return;
+    await loadCompaniesFor(email, activeCompanyId);
+  }
 
   function setActiveCompany(companyId: string) {
     setActiveCompanyId(companyId);
@@ -126,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       companies,
       activeCompanyId,
       setActiveCompany,
+      refresh,
       signIn: async () => {
         await signInWithPopup(auth, googleProvider);
       },

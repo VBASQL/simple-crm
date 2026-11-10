@@ -289,6 +289,20 @@ input:focus, select:focus { outline: 2px solid var(--brand-soft); border-color: 
 .chip--btn:hover { background: var(--surface-2); }
 .chip--btn.is-active { background: var(--brand-soft); color: var(--brand); border-color: transparent; }
 
+/* ---------- Dropdown menu (top-bar Settings) ---------- */
+.menu { position: relative; display: inline-flex; }
+.menu__backdrop { position: fixed; inset: 0; z-index: 30; }
+.menu__panel {
+  position: absolute; inset-block-start: calc(100% + 6px); inset-inline-end: 0; z-index: 31;
+  min-width: 210px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow); padding: 0.35rem; display: flex; flex-direction: column;
+}
+.menu__item { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.7rem; border-radius: 8px; color: var(--ink-2); font-weight: 550; font-size: 0.9rem; }
+.menu__item:hover { background: var(--surface-2); color: var(--ink); }
+.menu__item.is-active { background: var(--brand-soft); color: var(--brand); }
+.btn.is-active { background: var(--brand-soft); color: var(--brand); border-color: transparent; }
+.row-actions { display: inline-flex; gap: 0.4rem; }
+
 /* ---------- Settings form ---------- */
 .form-grid { display: grid; gap: 1.1rem; max-width: 520px; }
 .field { display: flex; flex-direction: column; gap: 0.35rem; }

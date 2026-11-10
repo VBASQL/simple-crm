@@ -16,6 +16,17 @@ export class FirestoreCompanyRepo implements CompanyRepo {
     return this.getById(companyId);
   }
 
+  async create(company: Company): Promise<void> {
+    await this.db.collection('companies').doc(company.id).set({
+      name: company.name,
+      timezone: company.timezone,
+      language: company.language,
+      ticketAutoCloseDays: company.ticketAutoCloseDays,
+      retentionMonths: company.retentionMonths,
+      ...(company.emailIntakeAddress !== undefined ? { emailIntakeAddress: company.emailIntakeAddress } : {}),
+    });
+  }
+
   async getById(companyId: string): Promise<Company | null> {
     const doc = await this.db.collection('companies').doc(companyId).get();
     if (!doc.exists) return null;

@@ -48,12 +48,18 @@ export const manageDid = onCall({ region }, async (request): Promise<{ ok: true;
 
   const email = request.auth?.token.email;
   if (typeof email !== 'string') throw new HttpsError('unauthenticated', 'Sign in required');
-  const companyId = await c.membership.companyForEmail(email);
-  if (companyId === null) throw new HttpsError('permission-denied', 'Not on the allow-list');
 
   const action = str(request.data, 'action');
   const number = str(request.data, 'number');
   const label = str(request.data, 'label');
+  const companyId = str(request.data, 'companyId');
+
+  // The caller names which of THEIR companies to manage (the active one in the
+  // UI); we verify membership server-side rather than trust it. A user may
+  // belong to several companies, so we cannot derive a single one from the email.
+  if (companyId === undefined) throw new HttpsError('invalid-argument', 'companyId is required');
+  const companies = await c.membership.companiesForEmail(email);
+  if (!companies.includes(companyId)) throw new HttpsError('permission-denied', 'Not a member of this company');
 
   try {
     if (number === undefined) throw new AppError('number is required', 'VALIDATION');

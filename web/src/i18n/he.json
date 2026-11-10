@@ -9,7 +9,9 @@
   "nav.tickets": "פניות",
   "nav.admin": "משתמשים",
   "nav.dids": "מספרים",
-  "nav.settings": "הגדרות",
+  "nav.companies": "חברות",
+  "nav.settings": "הגדרות חברה",
+  "nav.settingsMenu": "הגדרות",
   "nav.share": "שיתוף סוד",
   "nav.signOut": "התנתק",
   "share.title": "שיתוף סוד",
@@ -174,5 +176,13 @@
   "settings.saving": "שומר…",
   "settings.saved": "נשמר",
   "settings.invalid": "הזן מספרים שלמים גדולים מאפס.",
-  "settings.failed": "השמירה נכשלה. ייתכן שאין לך הרשאה."
+  "settings.failed": "השמירה נכשלה. ייתכן שאין לך הרשאה.",
+  "companies.title": "חברות",
+  "companies.subtitle": "כל החברות שאתה עובד בהן. החלף את החברה הפעילה, או הוסף חברת לקוח חדשה.",
+  "companies.namePh": "שם חברה חדשה",
+  "companies.create": "הוסף חברה",
+  "companies.creating": "יוצר…",
+  "companies.createFailed": "יצירת החברה נכשלה. ייתכן שאין לך הרשאה.",
+  "companies.active": "פעילה",
+  "companies.switchTo": "עבור אל"
 }

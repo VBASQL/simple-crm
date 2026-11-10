@@ -36,6 +36,9 @@ export class InMemoryCompanyRepo implements CompanyRepo {
   async getById(companyId: string): Promise<Company | null> {
     return this.companies.get(companyId) ?? null;
   }
+  async create(company: Company): Promise<void> {
+    this.companies.set(company.id, company);
+  }
 }
 
 export class InMemoryCustomerRepo implements CustomerRepo {
@@ -155,13 +158,20 @@ export class InMemoryDidRepo implements DidRepo {
 }
 
 export class InMemoryMembershipRepo implements MembershipRepo {
-  readonly byEmail = new Map<string, string>();
-  seed(email: string, companyId: string): this {
-    this.byEmail.set(email, companyId);
+  readonly byEmail = new Map<string, string[]>();
+  seed(email: string, ...companyIds: string[]): this {
+    this.byEmail.set(email, companyIds);
     return this;
   }
   async companyForEmail(email: string): Promise<string | null> {
-    return this.byEmail.get(email) ?? null;
+    return this.byEmail.get(email)?.[0] ?? null;
+  }
+  async companiesForEmail(email: string): Promise<string[]> {
+    return this.byEmail.get(email) ?? [];
+  }
+  async addCompany(email: string, companyId: string): Promise<void> {
+    const existing = this.byEmail.get(email) ?? [];
+    this.byEmail.set(email, Array.from(new Set([...existing, companyId])));
   }
 }
 

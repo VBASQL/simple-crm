@@ -26,11 +26,11 @@ export function Dids() {
 
   async function onAdd(e: FormEvent) {
     e.preventDefault();
-    if (number.trim().length === 0) return;
+    if (number.trim().length === 0 || companyId === undefined) return;
     setBusy(true);
     setError(null);
     try {
-      await services.addDid(number.trim(), label.trim() || undefined);
+      await services.addDid(number.trim(), companyId, label.trim() || undefined);
       setNumber('');
       setLabel('');
     } catch (err) {
@@ -44,9 +44,9 @@ export function Dids() {
   }
 
   async function onRemove(num: string) {
-    if (!window.confirm(t('dids.confirmRemove'))) return;
+    if (companyId === undefined || !window.confirm(t('dids.confirmRemove'))) return;
     try {
-      await services.removeDid(num);
+      await services.removeDid(num, companyId);
     } catch {
       setError(t('dids.failed'));
     }

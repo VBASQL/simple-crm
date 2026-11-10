@@ -9,7 +9,9 @@
   "nav.tickets": "Tickets",
   "nav.admin": "Users",
   "nav.dids": "Numbers",
-  "nav.settings": "Settings",
+  "nav.companies": "Companies",
+  "nav.settings": "Company settings",
+  "nav.settingsMenu": "Settings",
   "nav.share": "Share secret",
   "nav.signOut": "Sign out",
   "share.title": "Share a secret",
@@ -174,5 +176,13 @@
   "settings.saving": "Saving…",
   "settings.saved": "Saved",
   "settings.invalid": "Enter whole numbers greater than zero.",
-  "settings.failed": "Could not save. You may not have permission."
+  "settings.failed": "Could not save. You may not have permission.",
+  "companies.title": "Companies",
+  "companies.subtitle": "Every company you work in. Switch the active one, or add a new client company.",
+  "companies.namePh": "New company name",
+  "companies.create": "Add company",
+  "companies.creating": "Creating…",
+  "companies.createFailed": "Could not create the company. You may not have permission.",
+  "companies.active": "Active",
+  "companies.switchTo": "Switch to"
 }

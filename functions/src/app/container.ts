@@ -12,6 +12,7 @@ import { TicketPolicy } from '../domain/tickets/TicketPolicy.js';
 import { PhoneNormalizer } from '../domain/customers/PhoneNormalizer.js';
 import { SecretService } from '../domain/secrets/SecretService.js';
 import { DidService } from '../domain/dids/DidService.js';
+import { CompanyProvisioningService } from '../domain/companies/CompanyProvisioningService.js';
 import type { MembershipRepo } from '../domain/ports/MembershipRepo.js';
 
 import { SystemClock } from '../infra/system/SystemClock.js';
@@ -43,6 +44,7 @@ export interface Container {
   readonly secretService: SecretService;
   readonly didService: DidService;
   readonly membership: MembershipRepo;
+  readonly companyProvisioning: CompanyProvisioningService;
 }
 
 export function buildContainer(cfg: Config): Container {
@@ -56,6 +58,7 @@ export function buildContainer(cfg: Config): Container {
   const phones = new PhoneNormalizer();
 
   const companyRepo = new FirestoreCompanyRepo(db);
+  const membershipRepo = new FirestoreMembershipRepo(db);
   const customerRepo = new FirestoreCustomerRepo(db);
   const callRepo = new FirestoreCallRepo(db);
   const ticketRepo = new FirestoreTicketRepo(db);
@@ -92,7 +95,8 @@ export function buildContainer(cfg: Config): Container {
     rawEvents: new FirestoreRawEventStore(db),
     secretService: new SecretService(new FirestoreSecretStore(db), clock, ids),
     didService: new DidService(new FirestoreDidRepo(db), phones),
-    membership: new FirestoreMembershipRepo(db),
+    membership: membershipRepo,
+    companyProvisioning: new CompanyProvisioningService(companyRepo, membershipRepo, ids),
   };
 }
 

@@ -50,6 +50,8 @@ export interface Services {
   getMembership(email: string): Promise<{ companyIds: string[]; name?: string } | null>;
   /** A company's display info (its name), for the switcher and headers. */
   getCompany(id: string): Promise<{ id: string; name?: string }>;
+  /** Provision a new company (the caller becomes a member). Returns its id. */
+  createCompany(name: string): Promise<{ id: string; name: string }>;
   /** Live company configuration, and a patch to update it (the Settings screen). */
   subscribeCompanySettings(companyId: string, cb: (s: CompanySettings) => void): Unsubscribe;
   updateCompanySettings(companyId: string, patch: Partial<Omit<CompanySettings, 'id'>>): Promise<void>;
@@ -67,8 +69,8 @@ export interface Services {
   // DIDs: list is read live from Firestore; writes go through the manageDid
   // callable so numbers are normalised to E.164 server-side.
   subscribeDids(companyId: string, cb: (dids: Did[]) => void): Unsubscribe;
-  addDid(number: string, label?: string): Promise<void>;
-  removeDid(number: string): Promise<void>;
+  addDid(number: string, companyId: string, label?: string): Promise<void>;
+  removeDid(number: string, companyId: string): Promise<void>;
   // A single ticket and its own slice of the timeline, for the ticket detail
   // view. Live so one agent's change (close, note) shows for another at once.
   subscribeTicket(ticketId: string, cb: (ticket: Ticket | null) => void): Unsubscribe;
@@ -231,6 +233,12 @@ export function createFirestoreServices(db: Firestore): Services {
       return { id, ...(snap.exists() && str(snap.data().name) !== undefined ? { name: str(snap.data().name) as string } : {}) };
     },
 
+    async createCompany(name) {
+      const res = await httpsCallable(functions, 'manageCompany')({ action: 'create', name });
+      const company = (res.data as { company?: { id?: string; name?: string } }).company ?? {};
+      return { id: company.id ?? '', name: company.name ?? name };
+    },
+
     subscribeCompanySettings(companyId, cb) {
       return onSnapshot(doc(db, 'companies', companyId), (snap) => {
         const d = snap.data() ?? {};
@@ -369,12 +377,12 @@ export function createFirestoreServices(db: Firestore): Services {
       );
     },
 
-    async addDid(number, label) {
-      await httpsCallable(functions, 'manageDid')({ action: 'add', number, ...(label ? { label } : {}) });
+    async addDid(number, companyId, label) {
+      await httpsCallable(functions, 'manageDid')({ action: 'add', number, companyId, ...(label ? { label } : {}) });
     },
 
-    async removeDid(number) {
-      await httpsCallable(functions, 'manageDid')({ action: 'remove', number });
+    async removeDid(number, companyId) {
+      await httpsCallable(functions, 'manageDid')({ action: 'remove', number, companyId });
     },
 
     subscribeTicket(ticketId, cb) {

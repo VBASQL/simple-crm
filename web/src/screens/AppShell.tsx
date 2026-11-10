@@ -12,6 +12,7 @@ const NAV: { to: string; icon: IconName; key: string; end?: boolean }[] = [
   { to: '/tickets', icon: 'tickets', key: 'nav.tickets' },
   { to: '/admin', icon: 'users', key: 'nav.admin' },
   { to: '/dids', icon: 'phone', key: 'nav.dids' },
+  { to: '/settings', icon: 'settings', key: 'nav.settings' },
   { to: '/share', icon: 'key', key: 'nav.share' },
 ];
 

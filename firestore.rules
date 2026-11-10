@@ -46,7 +46,11 @@ service cloud.firestore {
 
     match /companies/{companyId} {
       allow read: if sameCompany(companyId);
-      allow write: if false;
+      // Members may edit their own company's settings (name, language, zone,
+      // auto-close/retention knobs). The company is created by provisioning
+      // (Admin SDK), so create/delete stay closed.
+      allow create, delete: if false;
+      allow update: if sameCompany(companyId);
     }
 
     // DIDs are read by the company, but written only by the manageDid function

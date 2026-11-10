@@ -289,6 +289,14 @@ input:focus, select:focus { outline: 2px solid var(--brand-soft); border-color: 
 .chip--btn:hover { background: var(--surface-2); }
 .chip--btn.is-active { background: var(--brand-soft); color: var(--brand); border-color: transparent; }
 
+/* ---------- Settings form ---------- */
+.form-grid { display: grid; gap: 1.1rem; max-width: 520px; }
+.field { display: flex; flex-direction: column; gap: 0.35rem; }
+.field > span { font-weight: 600; font-size: 0.88rem; }
+.field small { font-size: 0.78rem; }
+.form-actions { display: flex; align-items: center; gap: 0.8rem; margin-top: 0.3rem; }
+.saved-flag { color: var(--ok); font-size: 0.85rem; font-weight: 600; }
+
 /* ---------- Pin ---------- */
 .detail-head__actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .customer-head__actions { margin-inline-start: auto; }

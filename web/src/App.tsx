@@ -13,6 +13,7 @@ import { Search } from './screens/Search.js';
 import { CustomerPage } from './screens/CustomerPage.js';
 import { AdminUsers } from './screens/AdminUsers.js';
 import { Dids } from './screens/Dids.js';
+import { Settings } from './screens/Settings.js';
 import { Share } from './screens/Share.js';
 
 function Loading() {
@@ -36,6 +37,7 @@ function Gate() {
         <Route path="tickets/:ticketId" element={<TicketDetail />} />
         <Route path="admin" element={<AdminUsers />} />
         <Route path="dids" element={<Dids />} />
+        <Route path="settings" element={<Settings />} />
         <Route path="share" element={<Share />} />
       </Route>
     </Routes>

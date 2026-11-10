@@ -37,6 +37,8 @@ beforeEach(async () => {
     await setDoc(doc(db, 'allowlist', 'user@co1.com'), { companyId: 'co-1' });
     // A member of two companies, in the new companyIds (array) form.
     await setDoc(doc(db, 'allowlist', 'multi@co.com'), { companyIds: ['co-1', 'co-2'] });
+    await setDoc(doc(db, 'companies', 'co-1'), { name: 'Acme', ticketAutoCloseDays: 14 });
+    await setDoc(doc(db, 'companies', 'co-2'), { name: 'Globex', ticketAutoCloseDays: 14 });
     await setDoc(doc(db, 'customers', 'c1'), { companyId: 'co-1', name: 'Own company' });
     await setDoc(doc(db, 'customers', 'c2'), { companyId: 'co-2', name: 'Other company' });
     // A ticket and an existing event, to test agent updates and note immutability.
@@ -162,5 +164,15 @@ describe('Firestore security rules (flat allow-list)', () => {
   it('keeps timeline events immutable (no edit, no delete)', async () => {
     await assertFails(updateDoc(doc(member(), 'events', 'e1'), { summary: 'tampered' }));
     await assertFails(deleteDoc(doc(member(), 'events', 'e1')));
+  });
+
+  it('lets a member edit their own company settings', async () => {
+    await assertSucceeds(updateDoc(doc(member(), 'companies', 'co-1'), { ticketAutoCloseDays: 30 }));
+  });
+
+  it('stops editing another company settings, and creating/deleting companies', async () => {
+    await assertFails(updateDoc(doc(member(), 'companies', 'co-2'), { ticketAutoCloseDays: 1 }));
+    await assertFails(setDoc(doc(member(), 'companies', 'co-new'), { name: 'X' }));
+    await assertFails(deleteDoc(doc(member(), 'companies', 'co-1')));
   });
 });

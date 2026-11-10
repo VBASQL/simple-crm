@@ -34,6 +34,16 @@ export interface Did {
   readonly label?: string;
 }
 
+/** Per-company configuration (defaults live in the functions' shared/defaults). */
+export interface CompanySettings {
+  readonly id: string;
+  readonly name?: string;
+  readonly language?: 'he' | 'en';
+  readonly timezone?: string;
+  readonly ticketAutoCloseDays?: number;
+  readonly retentionMonths?: number;
+}
+
 export interface RingingDoc {
   readonly id: string;
   readonly companyId: string;

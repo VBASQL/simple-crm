@@ -9,6 +9,7 @@
   "nav.tickets": "פניות",
   "nav.admin": "משתמשים",
   "nav.dids": "מספרים",
+  "nav.settings": "הגדרות",
   "nav.share": "שיתוף סוד",
   "nav.signOut": "התנתק",
   "share.title": "שיתוף סוד",
@@ -159,5 +160,19 @@
   "call.noNotes": "עדיין לא תועד דבר בשיחה זו.",
   "action.pin": "הצמד",
   "action.pinned": "מוצמד",
-  "action.unpin": "בטל הצמדה"
+  "action.unpin": "בטל הצמדה",
+  "settings.title": "הגדרות חברה",
+  "settings.subtitle": "ההגדרות חלות על החברה הפעילה בלבד.",
+  "settings.name": "שם החברה",
+  "settings.language": "שפת ברירת מחדל",
+  "settings.timezone": "אזור זמן",
+  "settings.autoClose": "סגירת פניות אוטומטית אחרי (ימים)",
+  "settings.autoCloseHint": "פנייה פתוחה ללא פעילות במשך מספר ימים זה נסגרת אוטומטית.",
+  "settings.retention": "שמירת הקלטות (חודשים)",
+  "settings.retentionHint": "הקלטות שיחה ותא קולי נמחקות לאחר מספר חודשים זה.",
+  "settings.save": "שמור הגדרות",
+  "settings.saving": "שומר…",
+  "settings.saved": "נשמר",
+  "settings.invalid": "הזן מספרים שלמים גדולים מאפס.",
+  "settings.failed": "השמירה נכשלה. ייתכן שאין לך הרשאה."
 }

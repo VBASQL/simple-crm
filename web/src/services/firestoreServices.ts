@@ -23,6 +23,7 @@ import { functions } from '../firebase/client.js';
 import type {
   AllowlistEntry,
   Did,
+  CompanySettings,
   Call,
   CallDirection,
   CallStatus,
@@ -49,6 +50,9 @@ export interface Services {
   getMembership(email: string): Promise<{ companyIds: string[]; name?: string } | null>;
   /** A company's display info (its name), for the switcher and headers. */
   getCompany(id: string): Promise<{ id: string; name?: string }>;
+  /** Live company configuration, and a patch to update it (the Settings screen). */
+  subscribeCompanySettings(companyId: string, cb: (s: CompanySettings) => void): Unsubscribe;
+  updateCompanySettings(companyId: string, patch: Partial<Omit<CompanySettings, 'id'>>): Promise<void>;
   getCustomer(id: string): Promise<Customer | null>;
   subscribeCustomerCalls(companyId: string, customerId: string, cb: (calls: Call[]) => void): Unsubscribe;
   subscribeCustomerTickets(companyId: string, customerId: string, cb: (t: Ticket[]) => void): Unsubscribe;
@@ -225,6 +229,25 @@ export function createFirestoreServices(db: Firestore): Services {
     async getCompany(id) {
       const snap = await getDoc(doc(db, 'companies', id));
       return { id, ...(snap.exists() && str(snap.data().name) !== undefined ? { name: str(snap.data().name) as string } : {}) };
+    },
+
+    subscribeCompanySettings(companyId, cb) {
+      return onSnapshot(doc(db, 'companies', companyId), (snap) => {
+        const d = snap.data() ?? {};
+        const lang = str(d.language);
+        cb({
+          id: companyId,
+          ...(str(d.name) !== undefined ? { name: str(d.name) as string } : {}),
+          ...(lang === 'he' || lang === 'en' ? { language: lang } : {}),
+          ...(str(d.timezone) !== undefined ? { timezone: str(d.timezone) as string } : {}),
+          ...(num(d.ticketAutoCloseDays) !== undefined ? { ticketAutoCloseDays: num(d.ticketAutoCloseDays) as number } : {}),
+          ...(num(d.retentionMonths) !== undefined ? { retentionMonths: num(d.retentionMonths) as number } : {}),
+        });
+      });
+    },
+
+    async updateCompanySettings(companyId, patch) {
+      await updateDoc(doc(db, 'companies', companyId), patch);
     },
 
     subscribeCustomers(companyId, cb) {

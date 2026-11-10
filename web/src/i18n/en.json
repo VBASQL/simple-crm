@@ -9,6 +9,7 @@
   "nav.tickets": "Tickets",
   "nav.admin": "Users",
   "nav.dids": "Numbers",
+  "nav.settings": "Settings",
   "nav.share": "Share secret",
   "nav.signOut": "Sign out",
   "share.title": "Share a secret",
@@ -159,5 +160,19 @@
   "call.noNotes": "Nothing logged on this call yet.",
   "action.pin": "Pin",
   "action.pinned": "Pinned",
-  "action.unpin": "Unpin"
+  "action.unpin": "Unpin",
+  "settings.title": "Company settings",
+  "settings.subtitle": "These apply to the active company only.",
+  "settings.name": "Company name",
+  "settings.language": "Default language",
+  "settings.timezone": "Time zone",
+  "settings.autoClose": "Auto-close tickets after (days)",
+  "settings.autoCloseHint": "An open ticket with no activity for this many days closes automatically.",
+  "settings.retention": "Keep recordings for (months)",
+  "settings.retentionHint": "Call recordings and voicemail are deleted after this many months.",
+  "settings.save": "Save settings",
+  "settings.saving": "Saving…",
+  "settings.saved": "Saved",
+  "settings.invalid": "Enter whole numbers greater than zero.",
+  "settings.failed": "Could not save. You may not have permission."
 }

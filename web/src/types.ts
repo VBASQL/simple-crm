@@ -52,6 +52,8 @@ export interface RingingDoc {
   readonly didNumber?: string;
   readonly extension?: string;
   readonly startedAt?: Date;
+  /** When the ring should stop being shown if no hangup/answer arrived. */
+  readonly expiresAt?: Date;
 }
 
 export interface Call {

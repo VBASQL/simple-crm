@@ -78,6 +78,10 @@ export interface Services {
   subscribeTicketEvents(companyId: string, ticketId: string, cb: (e: TimelineEvent[]) => void): Unsubscribe;
   /** One call, live — the call detail page (and taking notes during a call). */
   subscribeCall(callId: string, cb: (call: Call | null) => void): Unsubscribe;
+  /** The calls belonging to a ticket (a call creates/opens its ticket). */
+  subscribeTicketCalls(companyId: string, ticketId: string, cb: (calls: Call[]) => void): Unsubscribe;
+  /** Move a call to another ticket of the same customer. */
+  moveCall(callId: string, toTicketId: string): Promise<void>;
   // Agent CRM actions. These are user-initiated edits (not call-engine writes),
   // so they go straight to Firestore guarded by security rules, with server
   // timestamps. The engine keeps its own Admin-SDK write path.
@@ -140,6 +144,7 @@ function mapRinging(id: string, d: DocumentData): RingingDoc {
     didNumber: str(d.didNumber),
     extension: str(d.extension),
     startedAt: date(d.startedAt),
+    expiresAt: date(d.expiresAt),
   };
 }
 
@@ -423,6 +428,19 @@ export function createFirestoreServices(db: Firestore): Services {
       return onSnapshot(doc(db, 'calls', callId), (snap) =>
         cb(snap.exists() ? mapCall(snap.id, snap.data()) : null),
       );
+    },
+
+    subscribeTicketCalls(companyId, ticketId, cb) {
+      const q = query(
+        collection(db, 'calls'),
+        where('companyId', '==', companyId),
+        where('ticketId', '==', ticketId),
+      );
+      return onSnapshot(q, (snap) => cb(snap.docs.map((s) => mapCall(s.id, s.data())).sort(byTimeDesc)));
+    },
+
+    async moveCall(callId, toTicketId) {
+      await updateDoc(doc(db, 'calls', callId), { ticketId: toTicketId });
     },
 
     subscribeTicketEvents(companyId, ticketId, cb) {

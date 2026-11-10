@@ -162,6 +162,7 @@
   "entry.adding": "מוסיף…",
   "entry.failed": "השמירה נכשלה. ייתכן שאין לך הרשאה.",
   "call.back": "חזרה לשיחות",
+  "call.backToTicket": "חזרה לפנייה",
   "call.notFound": "השיחה כבר לא קיימת.",
   "call.live": "פעילה",
   "call.duration": "משך",
@@ -196,5 +197,6 @@
   "companies.creating": "יוצר…",
   "companies.createFailed": "יצירת החברה נכשלה. ייתכן שאין לך הרשאה.",
   "companies.active": "פעילה",
-  "companies.switchTo": "עבור אל"
+  "companies.switchTo": "עבור אל",
+  "companies.manage": "נהל"
 }

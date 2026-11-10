@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
 import { Icon } from '../components/Icon.js';
+import { DidsManager } from '../components/DidsManager.js';
 import type { CompanySettings } from '../types.js';
 
 // Mirror functions/src/shared/defaults.ts so the form shows the same values the
@@ -140,6 +141,11 @@ export function Settings() {
           {error !== null && <span className="error">{error}</span>}
         </div>
       </form>
+
+      {/* Numbers live with the company — a company is defined by its DIDs. */}
+      <div className="card card--pad" style={{ marginTop: '1.2rem', maxWidth: '640px' }}>
+        <DidsManager companyId={companyId} />
+      </div>
     </section>
   );
 }

@@ -66,10 +66,14 @@ service cloud.firestore {
       allow delete: if sameCompany(resource.data.companyId);
     }
 
-    // Read-only-from-app domain data; functions write via Admin SDK.
+    // Calls are written by Cloud Functions (Admin SDK). The one exception is
+    // re-filing: an agent may move a call to another ticket of the same
+    // company (only ticketId changes), mirroring how events move.
     match /calls/{callId} {
       allow read: if sameCompany(resource.data.companyId);
-      allow write: if false;
+      allow create, delete: if false;
+      allow update: if sameCompany(resource.data.companyId)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ticketId']);
     }
 
     // Timeline events are INTERACTIONS: a call, email or meeting. Notes are a

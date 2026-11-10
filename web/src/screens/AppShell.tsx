@@ -19,7 +19,6 @@ const WORKING_NAV: NavItem[] = [
 // Configuration lives in the top-right Settings menu, OUT of the working sidebar.
 const SETTINGS_NAV: NavItem[] = [
   { to: '/companies', icon: 'customers', key: 'nav.companies' },
-  { to: '/dids', icon: 'phone', key: 'nav.dids' },
   { to: '/admin', icon: 'users', key: 'nav.admin' },
   { to: '/settings', icon: 'settings', key: 'nav.settings' },
   { to: '/share', icon: 'key', key: 'nav.share' },

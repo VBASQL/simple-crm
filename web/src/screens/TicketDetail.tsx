@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
@@ -10,8 +10,8 @@ import { PinButton } from '../components/PinButton.js';
 import { NoteComposer } from '../components/NoteComposer.js';
 import { NotesList } from '../components/NotesList.js';
 import { InteractionLogger } from '../components/InteractionLogger.js';
-import { MoveEvent } from '../components/MoveEvent.js';
-import type { Customer, Note, Ticket, TicketStatus, TimelineEvent } from '../types.js';
+import { MoveTo } from '../components/MoveEvent.js';
+import type { Call, Customer, Note, Ticket, TicketStatus, TimelineEvent } from '../types.js';
 
 const STATUSES: TicketStatus[] = ['open', 'pending', 'closed'];
 const callIdOf = (e: TimelineEvent): string | undefined => (e.payload as { callId?: string } | undefined)?.callId;
@@ -25,6 +25,7 @@ export function TicketDetail() {
   const [ticket, setTicket] = useState<Ticket | null | undefined>(undefined);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [calls, setCalls] = useState<Call[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [allTickets, setAllTickets] = useState<Ticket[]>([]);
 
@@ -39,7 +40,11 @@ export function TicketDetail() {
 
   useEffect(() => {
     if (companyId === undefined) return;
-    return services.subscribeTicketEvents(companyId, ticketId, setEvents);
+    const unsubs = [
+      services.subscribeTicketEvents(companyId, ticketId, setEvents),
+      services.subscribeTicketCalls(companyId, ticketId, setCalls),
+    ];
+    return () => unsubs.forEach((u) => u());
   }, [services, companyId, ticketId]);
 
   const customerId = ticket?.customerId;
@@ -56,6 +61,20 @@ export function TicketDetail() {
     ];
     return () => unsubs.forEach((u) => u());
   }, [services, companyId, customerId]);
+
+  // The timeline is the ticket's real calls (from the calls collection — so a
+  // call that just created this ticket shows at once, before any CDR event)
+  // plus manual interactions (email/meeting, a call on another phone). The
+  // engine's own call/voicemail/missed_call events carry a payload.callId and
+  // are left out, since the call they describe is already shown from the calls
+  // collection — no duplicates. Computed before any early return (hook order).
+  const timeline = useMemo(() => {
+    const callItems = calls.map((c) => ({ key: `c-${c.id}`, at: c.startTime, call: c, event: undefined as TimelineEvent | undefined }));
+    const eventItems = events
+      .filter((e) => callIdOf(e) === undefined)
+      .map((e) => ({ key: `e-${e.id}`, at: e.at, call: undefined as Call | undefined, event: e }));
+    return [...callItems, ...eventItems].sort((a, b) => (b.at?.getTime() ?? 0) - (a.at?.getTime() ?? 0));
+  }, [calls, events]);
 
   if (ticket === undefined) return <p className="muted">{t('common.loading')}</p>;
   if (ticket === null)
@@ -166,37 +185,64 @@ export function TicketDetail() {
             <InteractionLogger companyId={companyId} customerId={customerId} ticketId={ticketId} author={profile?.email} />
           )}
 
-          {events.length === 0 ? (
+          {timeline.length === 0 ? (
             <p className="muted" style={{ marginTop: '1rem' }}>{t('ticketDetail.noActivity')}</p>
           ) : (
             <ul className="events" style={{ marginTop: '1rem' }}>
-              {events.map((e) => {
-                const callId = callIdOf(e);
-                const eventNotes = notes.filter((n) => n.eventId === e.id);
+              {timeline.map((item) => {
+                const c = item.call;
+                const e = item.event;
+                const anchorKey = c ? `call:${c.id}` : `event:${e?.id}`;
+                const itemNotes = c
+                  ? notes.filter((n) => n.callId === c.id)
+                  : notes.filter((n) => n.eventId === e?.id);
                 return (
-                  <li key={e.id} className="event">
+                  <li key={item.key} className="event">
                     <div className="event__row">
-                      <span className={`badge badge--${e.type}`}>{t(`event.type.${e.type}`)}</span>
-                      {callId !== undefined ? (
-                        <Link to={`/calls/${callId}`} className="grow link">{e.summary}</Link>
+                      {c ? (
+                        <>
+                          <span className={`badge badge--${c.status}`}>{t(`call.status.${c.status}`)}</span>
+                          <Link to={`/calls/${c.id}?from=${ticketId}`} className="grow link">
+                            {t(`call.direction.${c.direction}`)} · {c.callerNumber ?? t('common.unknownCustomer')}
+                          </Link>
+                          <span className="muted">{relativeTime(c.startTime, locale)}</span>
+                        </>
                       ) : (
-                        <span className="grow">{e.summary}</span>
+                        <>
+                          <span className={`badge badge--${e?.type}`}>{t(`event.type.${e?.type}`)}</span>
+                          <span className="grow">{e?.summary}</span>
+                          <span className="muted">{relativeTime(e?.at, locale)}</span>
+                        </>
                       )}
-                      <span className="muted">{relativeTime(e.at, locale)}</span>
                     </div>
+                    {/* Recording / voicemail, playable right next to the call. */}
+                    {c?.recordingUrl !== undefined && (
+                      <audio className="event__audio" controls preload="none" src={c.recordingUrl} />
+                    )}
                     <div className="event__actions">
-                      <button type="button" className="btn btn--sm btn--ghost" onClick={() => setNoteFor(noteFor === e.id ? null : e.id)}>
+                      <button type="button" className="btn btn--sm btn--ghost" onClick={() => setNoteFor(noteFor === anchorKey ? null : anchorKey)}>
                         <Icon name="plus" size={13} />
                         {t('note.add')}
                       </button>
-                      <MoveEvent eventId={e.id} currentTicketId={e.ticketId} tickets={allTickets} />
+                      <MoveTo
+                        currentTicketId={ticketId}
+                        tickets={allTickets}
+                        onMove={(to) => (c ? void services.moveCall(c.id, to) : e ? void services.moveEvent(e.id, to) : undefined)}
+                      />
                     </div>
-                    {noteFor === e.id && companyId !== undefined && customerId !== undefined && (
+                    {noteFor === anchorKey && companyId !== undefined && customerId !== undefined && (
                       <div className="event__note">
-                        <NoteComposer companyId={companyId} customerId={customerId} ticketId={ticketId} eventId={e.id} author={profile?.email} compact />
+                        <NoteComposer
+                          companyId={companyId}
+                          customerId={customerId}
+                          ticketId={ticketId}
+                          {...(c ? { callId: c.id } : { eventId: e?.id })}
+                          author={profile?.email}
+                          compact
+                        />
                       </div>
                     )}
-                    {eventNotes.length > 0 && <NotesList notes={eventNotes} />}
+                    {itemNotes.length > 0 && <NotesList notes={itemNotes} />}
                   </li>
                 );
               })}

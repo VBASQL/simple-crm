@@ -1,16 +1,23 @@
 import { useState } from 'react';
-import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
 import { Icon } from './Icon.js';
 import type { Ticket } from '../types.js';
 
 /**
- * Move an interaction event to a different ticket of the same customer. The
- * list is the customer's other tickets, so a call/email/meeting can be re-filed
- * when it was threaded onto the wrong one.
+ * Re-file a call or interaction onto a different ticket of the same customer.
+ * Generic over what moves: the caller supplies onMove(toTicketId). The list is
+ * the customer's other tickets, so an item threaded onto the wrong ticket can
+ * be corrected.
  */
-export function MoveEvent({ eventId, currentTicketId, tickets }: { eventId: string; currentTicketId?: string; tickets: Ticket[] }) {
-  const services = useServices();
+export function MoveTo({
+  currentTicketId,
+  tickets,
+  onMove,
+}: {
+  currentTicketId?: string;
+  tickets: Ticket[];
+  onMove: (toTicketId: string) => void;
+}) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const others = tickets.filter((tk) => tk.id !== currentTicketId);
@@ -32,7 +39,7 @@ export function MoveEvent({ eventId, currentTicketId, tickets }: { eventId: stri
                 type="button"
                 className="menu__item"
                 onClick={() => {
-                  void services.moveEvent(eventId, tk.id);
+                  onMove(tk.id);
                   setOpen(false);
                 }}
               >

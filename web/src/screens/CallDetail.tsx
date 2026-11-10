@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
@@ -20,9 +20,14 @@ function duration(seconds: number | undefined): string {
 
 export function CallDetail() {
   const { callId = '' } = useParams();
+  const [params] = useSearchParams();
   const { profile } = useAuth();
   const services = useServices();
   const { t, locale } = useI18n();
+
+  // Return to the ticket this call was opened from, when there is one; the back
+  // link resolves to that ticket, else to the parent ticket, else the calls log.
+  const fromTicket = params.get('from') ?? undefined;
 
   const [call, setCall] = useState<Call | null | undefined>(undefined);
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -60,9 +65,9 @@ export function CallDetail() {
   if (call === null)
     return (
       <section>
-        <Link to="/" className="btn btn--ghost btn--sm">
+        <Link to={fromTicket !== undefined ? `/tickets/${fromTicket}` : '/'} className="btn btn--ghost btn--sm">
           <Icon name="back" size={16} />
-          {t('call.back')}
+          {fromTicket !== undefined ? t('call.backToTicket') : t('call.back')}
         </Link>
         <div className="card card--pad empty" style={{ marginTop: '1rem' }}>
           <p>{t('call.notFound')}</p>
@@ -76,9 +81,13 @@ export function CallDetail() {
 
   return (
     <section>
-      <Link to="/" className="btn btn--ghost btn--sm" style={{ marginBottom: '0.8rem' }}>
+      <Link
+        to={fromTicket !== undefined ? `/tickets/${fromTicket}` : c.ticketId !== undefined ? `/tickets/${c.ticketId}` : '/'}
+        className="btn btn--ghost btn--sm"
+        style={{ marginBottom: '0.8rem' }}
+      >
         <Icon name="back" size={16} />
-        {t('call.back')}
+        {fromTicket !== undefined || c.ticketId !== undefined ? t('call.backToTicket') : t('call.back')}
       </Link>
 
       <div className="detail-head">

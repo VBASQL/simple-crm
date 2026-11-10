@@ -30,6 +30,35 @@ const db = getFirestore();
 
 const now = Date.now();
 
+// A tiny self-contained WAV (a short 440 Hz beep) as a data URI, so a seeded
+// recording actually plays in the browser offline. In production, recordingUrl
+// is Globalex's real play.php URL — this is only to demo the inline player.
+function demoRecording() {
+  const rate = 8000;
+  const secs = 0.4;
+  const n = Math.floor(rate * secs);
+  const data = Buffer.alloc(n);
+  for (let i = 0; i < n; i += 1) {
+    data[i] = 128 + Math.round(70 * Math.sin((2 * Math.PI * 440 * i) / rate) * (1 - i / n));
+  }
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + n, 4);
+  header.write('WAVE', 8);
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20); // PCM
+  header.writeUInt16LE(1, 22); // mono
+  header.writeUInt32LE(rate, 24);
+  header.writeUInt32LE(rate, 28);
+  header.writeUInt16LE(1, 32);
+  header.writeUInt16LE(8, 34); // 8-bit
+  header.write('data', 36);
+  header.writeUInt32LE(n, 40);
+  return `data:audio/wav;base64,${Buffer.concat([header, data]).toString('base64')}`;
+}
+const RECORDING = demoRecording();
+
 await db.doc(`companies/${COMPANY}`).set({
   name: 'Acme Ltd',
   timezone: 'Asia/Jerusalem',
@@ -84,6 +113,16 @@ await db.doc(`tickets/tk-1`).set({
   openedAt: new Date(now - 7_200_000),
   lastActivityAt: new Date(now - 3_600_000),
 });
+// A second ticket, so a call/interaction can be moved between tickets.
+await db.doc(`tickets/tk-2`).set({
+  companyId: COMPANY,
+  customerId: CUSTOMER,
+  status: 'open',
+  subject: 'Billing follow-up',
+  openedBy: 'manual',
+  openedAt: new Date(now - 600_000),
+  lastActivityAt: new Date(now - 600_000),
+});
 
 await db.doc('calls/seed-1').set({
   companyId: COMPANY,
@@ -96,16 +135,46 @@ await db.doc('calls/seed-1').set({
   startTime: new Date(now - 3_600_000),
   duration: 42,
   ticketId: 'tk-1',
+  recordingUrl: RECORDING,
   lastEventAt: new Date(now - 3_600_000),
 });
+// A voicemail left on the same ticket, with its message as a recording.
+await db.doc('calls/seed-vm').set({
+  companyId: COMPANY,
+  customerId: CUSTOMER,
+  direction: 'inbound',
+  status: 'voicemail',
+  callerNumber: '+972521234567',
+  didNumber: '+97237654321',
+  startTime: new Date(now - 1_800_000),
+  duration: 18,
+  ticketId: 'tk-1',
+  recordingUrl: RECORDING,
+  lastEventAt: new Date(now - 1_800_000),
+});
+// The engine's own call event carries payload.callId (points at its call doc),
+// so the ticket timeline shows the call once (from the calls collection) and
+// filters this out — matching real engine data.
 await db.doc('events/ev-1').set({
   companyId: COMPANY,
   customerId: CUSTOMER,
   ticketId: 'tk-1',
   type: 'call',
   summary: 'inbound call (answered)',
+  payload: { callId: 'seed-1' },
   at: new Date(now - 3_600_000),
   source: 'globalex',
+});
+// A manual interaction (email) on the ticket, to show a non-call timeline item.
+await db.doc('events/ev-2').set({
+  companyId: COMPANY,
+  customerId: CUSTOMER,
+  ticketId: 'tk-1',
+  type: 'email',
+  summary: 'Sent delivery schedule by email',
+  payload: {},
+  at: new Date(now - 2_400_000),
+  source: 'manual',
 });
 
 // A live ring to trigger the pop-up. The engine always writes a calls/{id}

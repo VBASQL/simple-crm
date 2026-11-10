@@ -74,16 +74,10 @@ export function Companies() {
                   {active && <span className="chip" style={{ marginInlineStart: '0.5rem' }}>{t('companies.active')}</span>}
                 </span>
                 {active ? (
-                  <span className="row-actions">
-                    <button type="button" className="btn btn--sm" onClick={() => navigate('/dids')}>
-                      <Icon name="phone" size={14} />
-                      {t('nav.dids')}
-                    </button>
-                    <button type="button" className="btn btn--sm" onClick={() => navigate('/settings')}>
-                      <Icon name="settings" size={14} />
-                      {t('nav.settings')}
-                    </button>
-                  </span>
+                  <button type="button" className="btn btn--sm" onClick={() => navigate('/settings')}>
+                    <Icon name="settings" size={14} />
+                    {t('companies.manage')}
+                  </button>
                 ) : (
                   <button type="button" className="btn btn--sm" onClick={() => setActiveCompany(c.id)}>
                     {t('companies.switchTo')}

@@ -29,7 +29,19 @@ export function RingingPopup() {
     return services.subscribeRinging(companyId, setRinging);
   }, [services, companyId]);
 
-  const active = useMemo(() => ringing.find((r) => !dismissed.has(r.id)) ?? null, [ringing, dismissed]);
+  // Only show a ring that is live: not dismissed and not past its expiry. A
+  // stale ringing doc (e.g. a hangup we never received, or seeded demo data)
+  // must not keep the pop-up up forever. `tick` re-evaluates expiry over time.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 15000);
+    return () => clearInterval(id);
+  }, []);
+  const active = useMemo(() => {
+    const now = Date.now();
+    void tick;
+    return ringing.find((r) => !dismissed.has(r.id) && (r.expiresAt === undefined || r.expiresAt.getTime() > now)) ?? null;
+  }, [ringing, dismissed, tick]);
 
   useEffect(() => {
     let cancelled = false;

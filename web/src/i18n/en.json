@@ -162,6 +162,7 @@
   "entry.adding": "Adding…",
   "entry.failed": "Could not save. You may not have permission.",
   "call.back": "Back to calls",
+  "call.backToTicket": "Back to ticket",
   "call.notFound": "This call no longer exists.",
   "call.live": "Live",
   "call.duration": "Duration",
@@ -196,5 +197,6 @@
   "companies.creating": "Creating…",
   "companies.createFailed": "Could not create the company. You may not have permission.",
   "companies.active": "Active",
-  "companies.switchTo": "Switch to"
+  "companies.switchTo": "Switch to",
+  "companies.manage": "Manage"
 }

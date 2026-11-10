@@ -6,6 +6,7 @@ import { useI18n } from '../i18n/i18n.js';
 import { relativeTime, formatDateTime } from '../format.js';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
+import { EntryComposer } from '../components/EntryComposer.js';
 import type { Call, Customer, Ticket, TimelineEvent } from '../types.js';
 
 type Tab = 'timeline' | 'tickets' | 'calls';
@@ -84,20 +85,28 @@ export function CustomerPage() {
       </div>
 
       <div className="card card--pad">
-        {tab === 'timeline' &&
-          (events.length === 0 ? (
-            <p className="muted">{t('customer.noEvents')}</p>
-          ) : (
-            <ul className="timeline">
-              {events.map((e) => (
-                <li key={e.id}>
-                  <span className={`badge badge--${e.type}`}>{t(`event.type.${e.type}`)}</span>
-                  <span className="grow">{e.summary}</span>
-                  <span className="muted">{relativeTime(e.at, locale)}</span>
-                </li>
-              ))}
-            </ul>
-          ))}
+        {tab === 'timeline' && (
+          <>
+            {companyId !== undefined && (
+              <EntryComposer companyId={companyId} customerId={customerId} author={profile?.email} />
+            )}
+            {events.length === 0 ? (
+              <p className="muted" style={{ marginTop: '1rem' }}>
+                {t('customer.noEvents')}
+              </p>
+            ) : (
+              <ul className="timeline" style={{ marginTop: '1rem' }}>
+                {events.map((e) => (
+                  <li key={e.id}>
+                    <span className={`badge badge--${e.type}`}>{t(`event.type.${e.type}`)}</span>
+                    <span className="grow">{e.summary}</span>
+                    <span className="muted">{relativeTime(e.at, locale)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
 
         {tab === 'tickets' &&
           (tickets.length === 0 ? (
@@ -124,7 +133,9 @@ export function CustomerPage() {
               {calls.map((c) => (
                 <li key={c.id}>
                   <span className={`badge badge--${c.status}`}>{t(`call.status.${c.status}`)}</span>
-                  <span className="grow">{c.callerNumber ?? ''}</span>
+                  <Link to={`/calls/${c.id}`} className="grow link">
+                    {c.callerNumber ?? t('common.unknownCustomer')}
+                  </Link>
                   <span className="muted">{formatDateTime(c.startTime, locale)}</span>
                 </li>
               ))}

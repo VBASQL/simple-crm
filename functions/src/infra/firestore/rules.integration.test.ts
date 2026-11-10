@@ -86,35 +86,59 @@ describe('Firestore security rules (flat allow-list)', () => {
     await assertSucceeds(updateDoc(doc(member(), 'tickets', 'tk1'), { status: 'closed' }));
   });
 
-  it('lets an allow-listed user append a note to the timeline', async () => {
+  it('lets an allow-listed user append a manual note or meeting to the timeline', async () => {
     await assertSucceeds(
       addDoc(collection(member(), 'events'), {
         companyId: 'co-1',
         customerId: 'c1',
         type: 'note',
         summary: 'Called back',
+        source: 'manual',
+      }),
+    );
+    await assertSucceeds(
+      addDoc(collection(member(), 'events'), {
+        companyId: 'co-1',
+        customerId: 'c1',
+        type: 'meeting',
+        summary: 'Met at the office',
+        source: 'manual',
       }),
     );
   });
 
-  it('stops an agent from forging a non-note event (e.g. a fake call)', async () => {
+  it('stops an agent from forging an engine-captured event (source not manual)', async () => {
     await assertFails(
       addDoc(collection(member(), 'events'), {
         companyId: 'co-1',
         customerId: 'c1',
         type: 'call',
-        summary: 'fake',
+        summary: 'fake auto call',
+        source: 'globalex',
       }),
     );
   });
 
-  it('stops adding a note to another company', async () => {
+  it('stops a manual entry of a type outside the allowed set', async () => {
+    await assertFails(
+      addDoc(collection(member(), 'events'), {
+        companyId: 'co-1',
+        customerId: 'c1',
+        type: 'voicemail',
+        summary: 'fake voicemail',
+        source: 'manual',
+      }),
+    );
+  });
+
+  it('stops adding an entry to another company', async () => {
     await assertFails(
       addDoc(collection(member(), 'events'), {
         companyId: 'co-2',
         customerId: 'c2',
         type: 'note',
         summary: 'intrusion',
+        source: 'manual',
       }),
     );
   });

@@ -5,6 +5,7 @@ export type EventType =
   | 'email'
   | 'order'
   | 'subscription'
+  | 'meeting'
   | 'note';
 
 /** The customer timeline. Every call, email and keyword hit writes one. */

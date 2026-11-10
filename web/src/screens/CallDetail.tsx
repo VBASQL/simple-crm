@@ -1,0 +1,162 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider.js';
+import { useServices } from '../services/ServicesContext.js';
+import { useI18n } from '../i18n/i18n.js';
+import { formatDateTime, relativeTime } from '../format.js';
+import { Avatar } from '../components/Avatar.js';
+import { Icon } from '../components/Icon.js';
+import { EntryComposer } from '../components/EntryComposer.js';
+import type { Call, Customer, TimelineEvent } from '../types.js';
+
+/** mm:ss for a duration in seconds; empty when unknown. */
+function duration(seconds: number | undefined): string {
+  if (seconds === undefined) return '';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+export function CallDetail() {
+  const { callId = '' } = useParams();
+  const { profile } = useAuth();
+  const services = useServices();
+  const { t, locale } = useI18n();
+
+  const [call, setCall] = useState<Call | null | undefined>(undefined);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
+
+  const companyId = profile?.companyId;
+
+  useEffect(() => services.subscribeCall(callId, setCall), [services, callId]);
+
+  const customerId = call?.customerId;
+  useEffect(() => {
+    if (customerId === undefined) return;
+    void services.getCustomer(customerId).then(setCustomer);
+  }, [services, customerId]);
+
+  // The customer's whole timeline, filtered to this call — the CDR event, a
+  // missed-call marker, and every note taken here all carry payload.callId.
+  useEffect(() => {
+    if (companyId === undefined || customerId === undefined) return;
+    return services.subscribeCustomerEvents(companyId, customerId, setEvents);
+  }, [services, companyId, customerId]);
+
+  const callEvents = useMemo(
+    () => events.filter((e) => (e.payload as { callId?: string } | undefined)?.callId === callId),
+    [events, callId],
+  );
+
+  if (call === undefined) return <p className="muted">{t('common.loading')}</p>;
+  if (call === null)
+    return (
+      <section>
+        <Link to="/" className="btn btn--ghost btn--sm">
+          <Icon name="back" size={16} />
+          {t('call.back')}
+        </Link>
+        <div className="card card--pad empty" style={{ marginTop: '1rem' }}>
+          <p>{t('call.notFound')}</p>
+        </div>
+      </section>
+    );
+
+  const c = call;
+  const custName = customer?.name ?? t('common.unknownCustomer');
+  const isLive = c.status === 'ringing';
+
+  return (
+    <section>
+      <Link to="/" className="btn btn--ghost btn--sm" style={{ marginBottom: '0.8rem' }}>
+        <Icon name="back" size={16} />
+        {t('call.back')}
+      </Link>
+
+      <div className="detail-head">
+        <div className="detail-head__main">
+          <div className="call-title">
+            <Avatar name={customer?.name ?? c.callerNumber} size={40} />
+            <div>
+              <Link to={`/customers/${c.customerId}`} className="link">
+                <h1>{custName}</h1>
+              </Link>
+              <div className="muted mono">{c.callerNumber ?? ''}</div>
+            </div>
+          </div>
+        </div>
+        <div className="call-badges">
+          {isLive && <span className="badge badge--ringing live">{t('call.live')}</span>}
+          <span className={`badge badge--${c.status}`}>{t(`call.status.${c.status}`)}</span>
+          <span className="badge">{t(`call.direction.${c.direction}`)}</span>
+        </div>
+      </div>
+
+      <div className="detail-meta muted">
+        <span>{formatDateTime(c.startTime, locale)}</span>
+        {duration(c.duration) !== '' && (
+          <span>
+            {t('call.duration')}: {duration(c.duration)}
+          </span>
+        )}
+        {c.answeringExtension !== undefined && (
+          <span>
+            {t('call.extension')}: {c.answeringExtension}
+          </span>
+        )}
+        {c.ticketId !== undefined && (
+          <Link to={`/tickets/${c.ticketId}`} className="link">
+            {t('call.ticket')}
+          </Link>
+        )}
+      </div>
+
+      {/* Recording — rendered whenever the CDR carried a playback URL. Whether
+          the link needs Globalex auth is still an open question with them; the
+          player degrades to a plain link if the browser can't stream it. */}
+      {c.recordingUrl !== undefined && (
+        <div className="card card--pad" style={{ marginTop: '1rem' }}>
+          <h2>{t('call.recording')}</h2>
+          <audio controls preload="none" src={c.recordingUrl} style={{ width: '100%' }} />
+          <a href={c.recordingUrl} target="_blank" rel="noreferrer" className="link" style={{ fontSize: '0.85rem' }}>
+            {t('call.openRecording')}
+          </a>
+        </div>
+      )}
+
+      <div className="card card--pad" style={{ marginTop: '1rem' }}>
+        <h2>{t('call.notesTitle')}</h2>
+        <p className="muted" style={{ marginTop: '-0.4rem', marginBottom: '0.8rem' }}>
+          {t('call.notesHint')}
+        </p>
+
+        {companyId !== undefined && (
+          <EntryComposer
+            companyId={companyId}
+            customerId={c.customerId}
+            callId={callId}
+            author={profile?.email}
+            {...(c.ticketId !== undefined ? { ticketId: c.ticketId } : {})}
+          />
+        )}
+
+        {callEvents.length === 0 ? (
+          <p className="muted" style={{ marginTop: '1rem' }}>
+            {t('call.noNotes')}
+          </p>
+        ) : (
+          <ul className="timeline" style={{ marginTop: '1rem' }}>
+            {callEvents.map((e) => (
+              <li key={e.id}>
+                <span className={`badge badge--${e.type}`}>{t(`event.type.${e.type}`)}</span>
+                <span className="grow">{e.summary}</span>
+                <span className="muted">{relativeTime(e.at, locale)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}

@@ -12,6 +12,7 @@ export type EventType =
   | 'email'
   | 'order'
   | 'subscription'
+  | 'meeting'
   | 'note';
 
 export interface UserProfile {
@@ -87,5 +88,7 @@ export interface TimelineEvent {
   readonly ticketId?: string;
   readonly type: EventType;
   readonly summary: string;
+  /** Structured detail the engine (or a note) attached, e.g. { callId }. */
+  readonly payload?: Readonly<Record<string, unknown>>;
   readonly at?: Date;
 }

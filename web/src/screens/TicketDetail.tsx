@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
@@ -6,6 +6,7 @@ import { useI18n } from '../i18n/i18n.js';
 import { relativeTime, formatDateTime } from '../format.js';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
+import { EntryComposer } from '../components/EntryComposer.js';
 import type { Customer, Ticket, TicketStatus, TimelineEvent } from '../types.js';
 
 const STATUSES: TicketStatus[] = ['open', 'pending', 'closed'];
@@ -22,8 +23,6 @@ export function TicketDetail() {
 
   const [editingSubject, setEditingSubject] = useState(false);
   const [subjectDraft, setSubjectDraft] = useState('');
-  const [note, setNote] = useState('');
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const companyId = profile?.companyId;
@@ -77,22 +76,6 @@ export function TicketDetail() {
       await services.setTicketSubject(ticketId, next);
     } catch {
       setError(t('ticketDetail.saveFailed'));
-    }
-  }
-
-  async function onAddNote(e: FormEvent) {
-    e.preventDefault();
-    const text = note.trim();
-    if (text.length === 0 || companyId === undefined) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await services.addNote({ companyId, customerId: tk.customerId, ticketId, text, author: profile?.email });
-      setNote('');
-    } catch {
-      setError(t('ticketDetail.saveFailed'));
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -175,19 +158,14 @@ export function TicketDetail() {
       <div className="card card--pad" style={{ marginTop: '1rem' }}>
         <h2>{t('ticketDetail.notesTitle')}</h2>
 
-        <form className="note-form" onSubmit={(e) => void onAddNote(e)}>
-          <textarea
-            className="note-input"
-            rows={2}
-            placeholder={t('ticketDetail.addNotePh')}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
+        {companyId !== undefined && (
+          <EntryComposer
+            companyId={companyId}
+            customerId={tk.customerId}
+            ticketId={ticketId}
+            author={profile?.email}
           />
-          <button type="submit" className="btn btn--primary" disabled={busy || note.trim().length === 0}>
-            <Icon name="plus" size={16} />
-            {busy ? t('ticketDetail.adding') : t('ticketDetail.addNote')}
-          </button>
-        </form>
+        )}
 
         {events.length === 0 ? (
           <p className="muted" style={{ marginTop: '1rem' }}>

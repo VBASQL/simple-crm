@@ -63,8 +63,11 @@ export function RingingPopup() {
         </div>
       </div>
       <div className="popup__actions">
-        <button type="button" className="btn btn--primary" onClick={() => navigate(`/customers/${active.customerId}`)}>
-          {t('popup.openCustomer')}
+        {/* Open the call itself, not just the customer: the agent needs the
+            note box live while the call is ringing/connected. The ringing doc
+            id is the call_id, so it is the call's own page. */}
+        <button type="button" className="btn btn--primary" onClick={() => navigate(`/calls/${active.id}`)}>
+          {t('popup.openCall')}
         </button>
         <button type="button" className="btn" onClick={() => setDismissed((prev) => new Set(prev).add(active.id))}>
           {t('popup.dismiss')}

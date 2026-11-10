@@ -61,11 +61,16 @@ service cloud.firestore {
 
     match /events/{eventId} {
       allow read: if sameCompany(resource.data.companyId);
-      // Agents may append notes to the timeline; every other event type is
-      // written by Cloud Functions (Admin SDK) only. A note is immutable once
-      // written — history is not rewritten.
+      // Agents may log manual timeline entries — a note, or something not
+      // captured automatically (a call on another phone, an email, an in-person
+      // meeting). Every such write must be marked source 'manual', so it can
+      // never masquerade as an engine-captured event, and limited to that safe
+      // set of types (no forging voicemail/order/subscription). All other
+      // events are written by Cloud Functions (Admin SDK) only. Entries are
+      // immutable once written — history is not rewritten.
       allow create: if sameCompany(request.resource.data.companyId)
-                    && request.resource.data.type == 'note'
+                    && request.resource.data.source == 'manual'
+                    && request.resource.data.type in ['note', 'call', 'email', 'meeting']
                     && request.resource.data.customerId is string
                     && request.resource.data.summary is string;
       allow update, delete: if false;

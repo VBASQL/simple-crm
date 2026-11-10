@@ -87,7 +87,20 @@ await db.doc('events/ev-1').set({
   source: 'globalex',
 });
 
-// A live ring to trigger the pop-up.
+// A live ring to trigger the pop-up. The engine always writes a calls/{id}
+// doc alongside the ringing/{id} doc (same id = call_id), so seed both — this
+// is what makes "Open call" from the pop-up land on a real live call page.
+await db.doc('calls/seed-ring').set({
+  companyId: COMPANY,
+  customerId: CUSTOMER,
+  direction: 'inbound',
+  status: 'ringing',
+  callerNumber: '+972521234567',
+  didNumber: '+97237654321',
+  startTime: new Date(now),
+  ticketId: 'tk-1',
+  lastEventAt: new Date(now),
+});
 await db.doc('ringing/seed-ring').set({
   companyId: COMPANY,
   customerId: CUSTOMER,

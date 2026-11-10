@@ -64,20 +64,33 @@ export interface Services {
   // view. Live so one agent's change (close, note) shows for another at once.
   subscribeTicket(ticketId: string, cb: (ticket: Ticket | null) => void): Unsubscribe;
   subscribeTicketEvents(companyId: string, ticketId: string, cb: (e: TimelineEvent[]) => void): Unsubscribe;
+  /** One call, live — the call detail page (and taking notes during a call). */
+  subscribeCall(callId: string, cb: (call: Call | null) => void): Unsubscribe;
   // Agent CRM actions. These are user-initiated edits (not call-engine writes),
   // so they go straight to Firestore guarded by security rules, with server
   // timestamps. The engine keeps its own Admin-SDK write path.
   setTicketStatus(ticketId: string, status: TicketStatus): Promise<void>;
   setTicketSubject(ticketId: string, subject: string): Promise<void>;
-  /** Append a note to the timeline (and bump the ticket when one is given). */
-  addNote(input: {
+  /**
+   * Append a manual entry to the timeline (and bump the ticket when one is
+   * given). Covers a plain note and anything not captured automatically — a
+   * call from another phone, an email, an in-person meeting. Always written
+   * with source 'manual' so it is never confused with an engine-captured event.
+   */
+  addEntry(input: {
     companyId: string;
     customerId: string;
     ticketId?: string;
+    /** The call this entry was taken on, so the call page can show it. */
+    callId?: string;
+    type?: ManualEntryType;
     text: string;
     author?: string;
   }): Promise<void>;
 }
+
+/** The timeline entry kinds an agent may log by hand. */
+export type ManualEntryType = 'note' | 'call' | 'email' | 'meeting';
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 const num = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined);
@@ -148,6 +161,7 @@ function mapEvent(id: string, d: DocumentData): TimelineEvent {
     ticketId: str(d.ticketId),
     type: (str(d.type) as EventType) ?? 'note',
     summary: str(d.summary) ?? '',
+    ...(typeof d.payload === 'object' && d.payload !== null ? { payload: d.payload as Record<string, unknown> } : {}),
     at: date(d.at),
   };
 }
@@ -297,6 +311,12 @@ export function createFirestoreServices(db: Firestore): Services {
       );
     },
 
+    subscribeCall(callId, cb) {
+      return onSnapshot(doc(db, 'calls', callId), (snap) =>
+        cb(snap.exists() ? mapCall(snap.id, snap.data()) : null),
+      );
+    },
+
     subscribeTicketEvents(companyId, ticketId, cb) {
       // Two equality filters, no orderBy — Firestore serves this with a zig-zag
       // merge and needs no composite index (same as subscribeCustomerCalls).
@@ -322,16 +342,22 @@ export function createFirestoreServices(db: Firestore): Services {
       await updateDoc(doc(db, 'tickets', ticketId), { subject, lastActivityAt: serverTimestamp() });
     },
 
-    async addNote({ companyId, customerId, ticketId, text, author }) {
-      // A note is a first-class timeline event — same shape the engine writes —
-      // so it threads into the customer history next to calls and emails.
+    async addEntry({ companyId, customerId, ticketId, callId, type = 'note', text, author }) {
+      // A manual entry is a first-class timeline event — same shape the engine
+      // writes — so it threads into the customer history next to captured calls
+      // and emails. source 'manual' keeps it distinct from engine events. An
+      // entry taken on a call carries its callId (the call page shows it), and
+      // its ticketId so it lands on the ticket timeline too.
       await addDoc(collection(db, 'events'), {
         companyId,
         customerId,
         ...(ticketId !== undefined ? { ticketId } : {}),
-        type: 'note',
+        type,
         summary: text,
-        payload: author !== undefined ? { author } : {},
+        payload: {
+          ...(author !== undefined ? { author } : {}),
+          ...(callId !== undefined ? { callId } : {}),
+        },
         at: serverTimestamp(),
         source: 'manual',
       });

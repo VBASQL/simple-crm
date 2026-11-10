@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
+import { useLinkTo, useBackTarget } from '../nav.js';
 import { formatDateTime, relativeTime } from '../format.js';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
@@ -10,9 +11,6 @@ import { NoteComposer } from '../components/NoteComposer.js';
 import { NotesList } from '../components/NotesList.js';
 import { MoveTo } from '../components/MoveEvent.js';
 import type { Call, Customer, Note, Ticket, TimelineEvent } from '../types.js';
-
-const backLabelFor = (path: string): 'call.backToTicket' | 'call.back' =>
-  path.includes('/tickets/') ? 'call.backToTicket' : 'call.back';
 
 /** mm:ss for a duration in seconds; empty when unknown. */
 function duration(seconds: number | undefined): string {
@@ -24,15 +22,13 @@ function duration(seconds: number | undefined): string {
 
 export function CallDetail() {
   const { callId = '' } = useParams();
-  const [params] = useSearchParams();
   const { profile } = useAuth();
   const services = useServices();
   const { t, locale } = useI18n();
-
-  // `back` carries the full path the call was opened from (a ticket, the calls
-  // log, search…), so Back always returns to the origin. Falls back to the
-  // call's own ticket, then the calls log.
-  const backParam = params.get('back') ?? undefined;
+  const linkTo = useLinkTo();
+  // Back returns to wherever the call was opened from (a ticket, the calls log,
+  // search, the customer…); falls back to the call's own ticket, then calls.
+  const backParam = useBackTarget('');
 
   const [call, setCall] = useState<Call | null | undefined>(undefined);
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -72,9 +68,9 @@ export function CallDetail() {
   if (call === null)
     return (
       <section>
-        <Link to={backParam ?? '/'} className="btn btn--ghost btn--sm">
+        <Link to={backParam || '/'} className="btn btn--ghost btn--sm">
           <Icon name="back" size={16} />
-          {t(backLabelFor(backParam ?? '/'))}
+          {t('common.back')}
         </Link>
         <div className="card card--pad empty" style={{ marginTop: '1rem' }}>
           <p>{t('call.notFound')}</p>
@@ -85,13 +81,13 @@ export function CallDetail() {
   const c = call;
   const custName = customer?.name ?? t('common.unknownCustomer');
   const isLive = c.status === 'ringing';
-  const backTo = backParam ?? (c.ticketId !== undefined ? `/tickets/${c.ticketId}` : '/');
+  const backTo = backParam || (c.ticketId !== undefined ? `/tickets/${c.ticketId}` : '/');
 
   return (
     <section>
       <Link to={backTo} className="btn btn--ghost btn--sm" style={{ marginBottom: '0.8rem' }}>
         <Icon name="back" size={16} />
-        {t(backLabelFor(backTo))}
+        {t('common.back')}
       </Link>
 
       <div className="detail-head">
@@ -140,7 +136,7 @@ export function CallDetail() {
           </span>
         )}
         {c.ticketId !== undefined && (
-          <Link to={`/tickets/${c.ticketId}`} className="link">
+          <Link to={linkTo(`/tickets/${c.ticketId}`)} className="link">
             {t('call.ticket')}
           </Link>
         )}

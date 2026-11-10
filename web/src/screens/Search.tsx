@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLinkTo } from '../nav.js';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
@@ -19,6 +20,7 @@ export function Search() {
   const services = useServices();
   const { t, locale } = useI18n();
   const navigate = useNavigate();
+  const linkTo = useLinkTo();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -98,7 +100,7 @@ export function Search() {
           {custHits.length > 0 && (
             <Group label={t('search.customers')} count={custHits.length}>
               {custHits.map((c) => (
-                <button key={c.id} type="button" className="result" onClick={() => navigate(`/customers/${c.id}`)}>
+                <button key={c.id} type="button" className="result" onClick={() => navigate(linkTo(`/customers/${c.id}`))}>
                   <Avatar name={c.name ?? c.phones[0]} size={32} />
                   <div className="result__main">
                     <b>{c.name ?? t('common.unknownCustomer')}</b>
@@ -117,7 +119,7 @@ export function Search() {
                   key={tk.id}
                   type="button"
                   className="result"
-                  onClick={() => navigate(`/tickets/${tk.id}`)}
+                  onClick={() => navigate(linkTo(`/tickets/${tk.id}`))}
                 >
                   <span className={`badge badge--${tk.status}`}>{t(`ticket.status.${tk.status}`)}</span>
                   <div className="result__main">
@@ -137,7 +139,7 @@ export function Search() {
                   key={c.id}
                   type="button"
                   className="result"
-                  onClick={() => navigate(`/calls/${c.id}?back=/search`)}
+                  onClick={() => navigate(linkTo(`/calls/${c.id}`))}
                 >
                   <span className={`badge badge--${c.status}`}>{t(`call.status.${c.status}`)}</span>
                   <div className="result__main">

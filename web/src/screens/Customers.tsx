@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLinkTo } from '../nav.js';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
@@ -13,6 +14,7 @@ export function Customers() {
   const services = useServices();
   const { t, locale } = useI18n();
   const navigate = useNavigate();
+  const linkTo = useLinkTo();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [q, setQ] = useState('');
 
@@ -60,7 +62,7 @@ export function Customers() {
             </thead>
             <tbody>
               {filtered.map((c) => (
-                <tr key={c.id} className="row" onClick={() => navigate(`/customers/${c.id}`)}>
+                <tr key={c.id} className="row" onClick={() => navigate(linkTo(`/customers/${c.id}`))}>
                   <td>
                     <div className="cell-main">
                       <Avatar name={c.name ?? c.phones[0]} size={32} />

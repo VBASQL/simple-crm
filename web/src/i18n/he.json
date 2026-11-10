@@ -202,5 +202,10 @@
   "companies.createFailed": "יצירת החברה נכשלה. ייתכן שאין לך הרשאה.",
   "companies.active": "פעילה",
   "companies.switchTo": "עבור אל",
-  "companies.manage": "נהל"
+  "companies.manage": "נהל",
+  "common.back": "חזרה",
+  "callsLog.search": "חיפוש שיחות…",
+  "tickets.search": "חיפוש פניות…",
+  "customer.calls": "שיחות",
+  "customer.noCalls": "אין שיחות עדיין."
 }

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
+import { useLinkTo, useBackTarget } from '../nav.js';
 import { relativeTime, formatDateTime } from '../format.js';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
@@ -21,6 +22,8 @@ export function TicketDetail() {
   const { profile } = useAuth();
   const services = useServices();
   const { t, locale } = useI18n();
+  const linkTo = useLinkTo();
+  const backTo = useBackTarget('/tickets');
 
   const [ticket, setTicket] = useState<Ticket | null | undefined>(undefined);
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -80,9 +83,9 @@ export function TicketDetail() {
   if (ticket === null)
     return (
       <section>
-        <Link to="/tickets" className="btn btn--ghost btn--sm">
+        <Link to={backTo} className="btn btn--ghost btn--sm">
           <Icon name="back" size={16} />
-          {t('ticketDetail.back')}
+          {t('common.back')}
         </Link>
         <div className="card card--pad empty" style={{ marginTop: '1rem' }}>
           <p>{t('ticketDetail.notFound')}</p>
@@ -117,9 +120,9 @@ export function TicketDetail() {
 
   return (
     <section>
-      <Link to="/tickets" className="btn btn--ghost btn--sm" style={{ marginBottom: '0.8rem' }}>
+      <Link to={backTo} className="btn btn--ghost btn--sm" style={{ marginBottom: '0.8rem' }}>
         <Icon name="back" size={16} />
-        {t('ticketDetail.back')}
+        {t('common.back')}
       </Link>
 
       <div className="detail-head">
@@ -202,7 +205,7 @@ export function TicketDetail() {
                       {c ? (
                         <>
                           <span className={`badge badge--${c.status}`}>{t(`call.status.${c.status}`)}</span>
-                          <Link to={`/calls/${c.id}?back=/tickets/${ticketId}`} className="grow link">
+                          <Link to={linkTo(`/calls/${c.id}`)} className="grow link">
                             {t(`call.direction.${c.direction}`)} · {c.callerNumber ?? t('common.unknownCustomer')}
                           </Link>
                           <span className="muted">{relativeTime(c.startTime, locale)}</span>

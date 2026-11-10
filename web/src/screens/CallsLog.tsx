@@ -1,25 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
+import { useLinkTo } from '../nav.js';
 import { relativeTime } from '../format.js';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
-import type { Call, Customer } from '../types.js';
+import type { Call, Customer, Ticket } from '../types.js';
 
 export function CallsLog() {
   const { profile } = useAuth();
   const services = useServices();
   const { t, locale } = useI18n();
-  const navigate = useNavigate();
+  const linkTo = useLinkTo();
   const [calls, setCalls] = useState<Call[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [q, setQ] = useState('');
 
   const companyId = profile?.companyId;
   useEffect(() => {
     if (companyId === undefined) return;
-    const unsubs = [services.subscribeRecentCalls(companyId, setCalls), services.subscribeCustomers(companyId, setCustomers)];
+    const unsubs = [
+      services.subscribeRecentCalls(companyId, setCalls),
+      services.subscribeCustomers(companyId, setCustomers),
+      services.subscribeTickets(companyId, setTickets),
+    ];
     return () => unsubs.forEach((u) => u());
   }, [services, companyId]);
 
@@ -27,6 +34,10 @@ export function CallsLog() {
     const map = new Map(customers.map((c) => [c.id, c.name]));
     return (id: string) => map.get(id);
   }, [customers]);
+  const subjectOf = useMemo(() => {
+    const map = new Map(tickets.map((tk) => [tk.id, tk.subject]));
+    return (id?: string) => (id === undefined ? undefined : map.get(id));
+  }, [tickets]);
 
   const stats = useMemo(
     () => ({
@@ -37,10 +48,27 @@ export function CallsLog() {
     [calls],
   );
 
+  const needle = q.trim().toLowerCase();
+  const visible = useMemo(
+    () =>
+      needle === ''
+        ? calls
+        : calls.filter((c) =>
+            [c.callerNumber ?? '', c.didNumber ?? '', nameOf(c.customerId) ?? '', subjectOf(c.ticketId) ?? ''].some((v) =>
+              v.toLowerCase().includes(needle),
+            ),
+          ),
+    [calls, needle, nameOf, subjectOf],
+  );
+
   return (
     <section>
       <div className="page-head">
         <h1>{t('callsLog.title')}</h1>
+        <div className="search">
+          <Icon name="search" size={16} />
+          <input type="text" placeholder={t('callsLog.search')} value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
       </div>
 
       <div className="stats">
@@ -58,56 +86,42 @@ export function CallsLog() {
         </div>
       </div>
 
-      {calls.length === 0 ? (
-        <Empty />
-      ) : (
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{t('callsLog.caller')}</th>
-                <th>{t('callsLog.direction')}</th>
-                <th>{t('callsLog.status')}</th>
-                <th>{t('callsLog.when')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {calls.map((c) => {
-                const name = nameOf(c.customerId);
-                return (
-                  <tr key={c.id} className="row" onClick={() => navigate(`/calls/${c.id}?back=/`)}>
-                    <td>
-                      <div className="cell-main">
-                        <Avatar name={name ?? c.callerNumber} size={32} />
-                        <div>
-                          <b>{name ?? t('common.unknownCustomer')}</b>
-                          <div className="muted">{c.callerNumber ?? ''}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="muted">{t(`call.direction.${c.direction}`)}</td>
-                    <td>
-                      <span className={`badge badge--${c.status}`}>{t(`call.status.${c.status}`)}</span>
-                    </td>
-                    <td className="muted">{relativeTime(c.startTime, locale)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {visible.length === 0 ? (
+        <div className="card card--pad empty">
+          <span className="empty__icon">
+            <Icon name="calls" size={22} />
+          </span>
+          <p>{calls.length === 0 ? t('callsLog.empty') : t('customers.noMatch')}</p>
         </div>
+      ) : (
+        <ul className="events card card--pad">
+          {visible.map((c) => {
+            const name = nameOf(c.customerId);
+            return (
+              <li key={c.id} className="event">
+                <div className="event__row">
+                  <Avatar name={name ?? c.callerNumber} size={30} />
+                  <Link to={linkTo(`/calls/${c.id}`)} className="grow link">
+                    <b>{name ?? t('common.unknownCustomer')}</b>
+                    <span className="muted"> · {c.callerNumber ?? ''}</span>
+                  </Link>
+                  <span className="muted">{t(`call.direction.${c.direction}`)}</span>
+                  <span className={`badge badge--${c.status}`}>{t(`call.status.${c.status}`)}</span>
+                  {c.ticketId !== undefined && (
+                    <Link to={linkTo(`/tickets/${c.ticketId}`)} className="chip">
+                      {subjectOf(c.ticketId) ?? t('tickets.noSubject')}
+                    </Link>
+                  )}
+                  <span className="muted">{relativeTime(c.startTime, locale)}</span>
+                </div>
+                {c.recordingUrl !== undefined && (
+                  <audio className="event__audio" controls preload="none" src={c.recordingUrl} />
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
     </section>
   );
-
-  function Empty() {
-    return (
-      <div className="card card--pad empty">
-        <span className="empty__icon">
-          <Icon name="calls" size={22} />
-        </span>
-        <p>{t('callsLog.empty')}</p>
-      </div>
-    );
-  }
 }

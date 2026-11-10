@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
+import { useLinkTo } from '../nav.js';
 import { relativeTime } from '../format.js';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
@@ -15,9 +16,11 @@ export function Tickets() {
   const services = useServices();
   const { t, locale } = useI18n();
   const navigate = useNavigate();
+  const linkTo = useLinkTo();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filter, setFilter] = useState<Filter>('open');
+  const [q, setQ] = useState('');
 
   const companyId = profile?.companyId;
   useEffect(() => {
@@ -33,12 +36,23 @@ export function Tickets() {
 
   const matches = (s: TicketStatus): boolean =>
     filter === 'all' || (filter === 'open' ? s !== 'closed' : s === 'closed');
-  const visible = tickets.filter((tk) => matches(tk.status));
+  const needle = q.trim().toLowerCase();
+  const visible = tickets
+    .filter((tk) => matches(tk.status))
+    .filter(
+      (tk) =>
+        needle === '' ||
+        [tk.subject ?? '', nameOf(tk.customerId) ?? ''].some((v) => v.toLowerCase().includes(needle)),
+    );
 
   return (
     <section>
       <div className="page-head">
         <h1>{t('tickets.title')}</h1>
+        <div className="search">
+          <Icon name="search" size={16} />
+          <input type="text" placeholder={t('tickets.search')} value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
       </div>
 
       <div className="tabs">
@@ -73,7 +87,7 @@ export function Tickets() {
                 const name = nameOf(tk.customerId);
                 const closed = tk.status === 'closed';
                 return (
-                  <tr key={tk.id} className="row" onClick={() => navigate(`/tickets/${tk.id}`)}>
+                  <tr key={tk.id} className="row" onClick={() => navigate(linkTo(`/tickets/${tk.id}`))}>
                     <td>
                       <div className="cell-main">
                         {tk.pinned === true && <Icon name="star" size={13} />}

@@ -2,6 +2,7 @@
   "app.name": "Call CRM",
   "app.noProfile": "This account isn't on the allow-list. Ask an admin to add your email, then sign in again.",
   "common.loading": "Loading…",
+  "common.back": "Back",
   "common.unknownCustomer": "New customer",
   "nav.calls": "Calls",
   "nav.search": "Search",
@@ -202,5 +203,9 @@
   "companies.createFailed": "Could not create the company. You may not have permission.",
   "companies.active": "Active",
   "companies.switchTo": "Switch to",
-  "companies.manage": "Manage"
+  "companies.manage": "Manage",
+  "callsLog.search": "Search calls…",
+  "tickets.search": "Search tickets…",
+  "customer.calls": "Calls",
+  "customer.noCalls": "No calls yet."
 }

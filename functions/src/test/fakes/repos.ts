@@ -5,6 +5,9 @@ import type { TicketRepo } from '../../domain/ports/TicketRepo.js';
 import type { EventRepo } from '../../domain/ports/EventRepo.js';
 import type { RingingRepo } from '../../domain/ports/RingingRepo.js';
 import type { RawEventStore } from '../../domain/ports/RawEventStore.js';
+import type { DidRepo } from '../../domain/ports/DidRepo.js';
+import type { MembershipRepo } from '../../domain/ports/MembershipRepo.js';
+import type { Did } from '../../domain/companies/types.js';
 import type { SecretStore } from '../../domain/ports/SecretStore.js';
 import type { RevealResult } from '../../domain/secrets/types.js';
 import type { GlobalexPayload } from '../../shared/schemas/globalexPayload.js';
@@ -127,6 +130,38 @@ export class InMemoryRawEventStore implements RawEventStore {
   async markProcessed(id: string): Promise<void> {
     const row = this.captured.find((r) => r.id === id);
     if (row) row.processed = true;
+  }
+}
+
+export class InMemoryDidRepo implements DidRepo {
+  readonly byNumber = new Map<string, Did>();
+
+  seed(did: Did): this {
+    this.byNumber.set(did.number, did);
+    return this;
+  }
+  async listByCompany(companyId: string): Promise<Did[]> {
+    return [...this.byNumber.values()].filter((d) => d.companyId === companyId);
+  }
+  async getByNumber(numberE164: string): Promise<Did | null> {
+    return this.byNumber.get(numberE164) ?? null;
+  }
+  async upsert(did: Did): Promise<void> {
+    this.byNumber.set(did.number, did);
+  }
+  async delete(numberE164: string): Promise<void> {
+    this.byNumber.delete(numberE164);
+  }
+}
+
+export class InMemoryMembershipRepo implements MembershipRepo {
+  readonly byEmail = new Map<string, string>();
+  seed(email: string, companyId: string): this {
+    this.byEmail.set(email, companyId);
+    return this;
+  }
+  async companyForEmail(email: string): Promise<string | null> {
+    return this.byEmail.get(email) ?? null;
   }
 }
 

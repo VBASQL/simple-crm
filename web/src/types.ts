@@ -27,6 +27,12 @@ export interface AllowlistEntry {
   readonly companyId: string;
 }
 
+/** A dialled number mapped to the company (E.164). */
+export interface Did {
+  readonly number: string;
+  readonly label?: string;
+}
+
 export interface RingingDoc {
   readonly id: string;
   readonly companyId: string;

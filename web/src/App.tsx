@@ -9,6 +9,7 @@ import { Customers } from './screens/Customers.js';
 import { Tickets } from './screens/Tickets.js';
 import { CustomerPage } from './screens/CustomerPage.js';
 import { AdminUsers } from './screens/AdminUsers.js';
+import { Dids } from './screens/Dids.js';
 import { Share } from './screens/Share.js';
 
 function Loading() {
@@ -28,6 +29,7 @@ function Gate() {
         <Route path="customers/:customerId" element={<CustomerPage />} />
         <Route path="tickets" element={<Tickets />} />
         <Route path="admin" element={<AdminUsers />} />
+        <Route path="dids" element={<Dids />} />
         <Route path="share" element={<Share />} />
       </Route>
     </Routes>

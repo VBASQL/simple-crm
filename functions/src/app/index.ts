@@ -4,5 +4,6 @@
  */
 export { globalexWebhook } from './http/globalexWebhook.js';
 export { revealSecret } from './http/revealSecret.js';
+export { manageDid } from './http/manageDid.js';
 
 // Phase 2+: emailIntake, copyRecordings, autoCloseTickets, sweepRinging.

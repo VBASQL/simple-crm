@@ -7,6 +7,7 @@
   "nav.customers": "לקוחות",
   "nav.tickets": "פניות",
   "nav.admin": "משתמשים",
+  "nav.dids": "מספרים",
   "nav.share": "שיתוף סוד",
   "nav.signOut": "התנתק",
   "share.title": "שיתוף סוד",
@@ -88,5 +89,19 @@
   "call.direction.internal": "פנימית",
   "ticket.status.open": "פתוחה",
   "ticket.status.pending": "ממתינה",
-  "ticket.status.closed": "סגורה"
+  "ticket.status.closed": "סגורה",
+  "dids.title": "מספרי טלפון",
+  "dids.subtitle": "המספרים (DID) שאליהם מגיעות שיחות נכנסות ומנתבים אותן לחברה שלך. הזן כל מספר שהספק מעביר אלינו.",
+  "dids.numberPh": "מספר, למשל 03-5550123",
+  "dids.labelPh": "תווית (רשות)",
+  "dids.add": "הוסף מספר",
+  "dids.adding": "מוסיף…",
+  "dids.remove": "הסר",
+  "dids.empty": "אין מספרים עדיין. הוסף את המספרים שהספק מנתב אלינו.",
+  "dids.number": "מספר",
+  "dids.label": "תווית",
+  "dids.invalid": "זה לא נראה כמו מספר טלפון תקין.",
+  "dids.conflict": "המספר כבר משויך לחברה אחרת.",
+  "dids.failed": "השמירה נכשלה. ייתכן שאין לך הרשאה.",
+  "dids.confirmRemove": "להסיר מספר זה? שיחות אליו יפסיקו להגיע לכאן."
 }

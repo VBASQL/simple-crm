@@ -40,10 +40,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // DIDs are read by the company, but written only by the manageDid function
+    // (Admin SDK), so every number is normalised to E.164 before it is stored.
     match /dids/{didId} {
       allow read: if sameCompany(resource.data.companyId);
-      allow create, update: if sameCompany(request.resource.data.companyId);
-      allow delete: if sameCompany(resource.data.companyId);
+      allow write: if false;
     }
 
     match /emailRules/{ruleId} {

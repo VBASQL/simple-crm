@@ -15,8 +15,11 @@ import {
   type DocumentData,
 } from 'firebase/firestore';
 
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../firebase/client.js';
 import type {
   AllowlistEntry,
+  Did,
   Call,
   CallDirection,
   CallStatus,
@@ -49,6 +52,11 @@ export interface Services {
   removeUser(email: string): Promise<void>;
   /** Seal a one-time secret; returns its id (used to build the reveal link). */
   createSecret(secret: string, ttlDays?: number): Promise<string>;
+  // DIDs: list is read live from Firestore; writes go through the manageDid
+  // callable so numbers are normalised to E.164 server-side.
+  subscribeDids(companyId: string, cb: (dids: Did[]) => void): Unsubscribe;
+  addDid(number: string, label?: string): Promise<void>;
+  removeDid(number: string): Promise<void>;
 }
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
@@ -240,6 +248,26 @@ export function createFirestoreServices(db: Firestore): Services {
         expiresAt: Timestamp.fromMillis(Date.now() + ttlDays * 24 * 60 * 60 * 1000),
       });
       return ref.id;
+    },
+
+    subscribeDids(companyId, cb) {
+      const q = query(collection(db, 'dids'), where('companyId', '==', companyId));
+      return onSnapshot(q, (snap) =>
+        cb(
+          snap.docs
+            .map((s) => ({ number: str(s.data().number) ?? '', ...(str(s.data().label) !== undefined ? { label: str(s.data().label) } : {}) }))
+            .filter((d) => d.number.length > 0)
+            .sort((a, b) => a.number.localeCompare(b.number)),
+        ),
+      );
+    },
+
+    async addDid(number, label) {
+      await httpsCallable(functions, 'manageDid')({ action: 'add', number, ...(label ? { label } : {}) });
+    },
+
+    async removeDid(number) {
+      await httpsCallable(functions, 'manageDid')({ action: 'remove', number });
     },
   };
 }

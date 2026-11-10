@@ -7,6 +7,7 @@
   "nav.customers": "Customers",
   "nav.tickets": "Tickets",
   "nav.admin": "Users",
+  "nav.dids": "Numbers",
   "nav.share": "Share secret",
   "nav.signOut": "Sign out",
   "share.title": "Share a secret",
@@ -88,5 +89,19 @@
   "call.direction.internal": "Internal",
   "ticket.status.open": "Open",
   "ticket.status.pending": "Pending",
-  "ticket.status.closed": "Closed"
+  "ticket.status.closed": "Closed",
+  "dids.title": "Phone numbers",
+  "dids.subtitle": "The dialled numbers (DIDs) that route incoming calls to your company. Enter each number your provider delivers to us.",
+  "dids.numberPh": "Number, e.g. 03-5550123",
+  "dids.labelPh": "Label (optional)",
+  "dids.add": "Add number",
+  "dids.adding": "Adding…",
+  "dids.remove": "Remove",
+  "dids.empty": "No numbers yet. Add the DIDs your provider routes to us.",
+  "dids.number": "Number",
+  "dids.label": "Label",
+  "dids.invalid": "That doesn't look like a valid phone number.",
+  "dids.conflict": "That number is already mapped to another company.",
+  "dids.failed": "Could not save. You may not have permission.",
+  "dids.confirmRemove": "Remove this number? Calls to it will stop routing here."
 }

@@ -47,10 +47,12 @@ export function AdminUsers() {
   }
 
   async function onRemove(target: string) {
+    if (companyId === undefined) return;
     const self = target === profile?.email;
     if (!window.confirm(self ? t('admin.confirmRemoveSelf') : t('admin.confirmRemove'))) return;
     try {
-      await services.removeUser(target);
+      // Remove from THIS company only; the user keeps access to their others.
+      await services.removeUser(target, companyId);
     } catch {
       setError(t('admin.writeFailed'));
     }

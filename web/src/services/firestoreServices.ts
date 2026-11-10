@@ -32,7 +32,6 @@ import type {
   TicketStatus,
   TimelineEvent,
   EventType,
-  UserProfile,
 } from '../types.js';
 
 export type Unsubscribe = () => void;
@@ -43,8 +42,13 @@ export interface Services {
   subscribeRecentCalls(companyId: string, cb: (calls: Call[]) => void): Unsubscribe;
   subscribeCustomers(companyId: string, cb: (customers: Customer[]) => void): Unsubscribe;
   subscribeTickets(companyId: string, cb: (tickets: Ticket[]) => void): Unsubscribe;
-  /** Resolve an allow-listed profile by email; null → not on the allow-list. */
-  getProfileByEmail(email: string): Promise<UserProfile | null>;
+  /**
+   * The companies an email may access; null → not on the allow-list. A member
+   * can belong to several companies (the user switches between them).
+   */
+  getMembership(email: string): Promise<{ companyIds: string[]; name?: string } | null>;
+  /** A company's display info (its name), for the switcher and headers. */
+  getCompany(id: string): Promise<{ id: string; name?: string }>;
   getCustomer(id: string): Promise<Customer | null>;
   subscribeCustomerCalls(companyId: string, customerId: string, cb: (calls: Call[]) => void): Unsubscribe;
   subscribeCustomerTickets(companyId: string, customerId: string, cb: (t: Ticket[]) => void): Unsubscribe;
@@ -52,7 +56,8 @@ export interface Services {
   // Manage the allow-list (any allow-listed user; enforced by security rules).
   subscribeAllowlist(companyId: string, cb: (entries: AllowlistEntry[]) => void): Unsubscribe;
   addUser(email: string, companyId: string): Promise<void>;
-  removeUser(email: string): Promise<void>;
+  /** Remove a user from one company (the doc is deleted only when none remain). */
+  removeUser(email: string, companyId: string): Promise<void>;
   /** Seal a one-time secret; returns its id (used to build the reveal link). */
   createSecret(secret: string, ttlDays?: number): Promise<string>;
   // DIDs: list is read live from Firestore; writes go through the manageDid
@@ -96,6 +101,12 @@ export interface Services {
 export type ManualEntryType = 'note' | 'call' | 'email' | 'meeting';
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
+
+/** The companies on an allow-list entry, in either the list or legacy form. */
+const entryCompaniesOf = (d: DocumentData): string[] => {
+  if (Array.isArray(d.companyIds)) return d.companyIds.filter((x): x is string => typeof x === 'string');
+  return typeof d.companyId === 'string' ? [d.companyId] : [];
+};
 const num = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined);
 const date = (v: unknown): Date | undefined => (v instanceof Timestamp ? v.toDate() : undefined);
 const arr = (v: unknown): string[] => (Array.isArray(v) ? (v.filter((x) => typeof x === 'string') as string[]) : []);
@@ -203,15 +214,17 @@ export function createFirestoreServices(db: Firestore): Services {
       return onSnapshot(q, (snap) => cb(snap.docs.map((s) => mapCall(s.id, s.data()))));
     },
 
-    async getProfileByEmail(email) {
+    async getMembership(email) {
       const snap = await getDoc(doc(db, 'allowlist', email));
       if (!snap.exists()) return null;
       const d = snap.data();
-      return {
-        email,
-        companyId: str(d.companyId) ?? '',
-        name: str(d.name),
-      };
+      const companyIds = entryCompaniesOf(d);
+      return { companyIds, ...(str(d.name) !== undefined ? { name: str(d.name) as string } : {}) };
+    },
+
+    async getCompany(id) {
+      const snap = await getDoc(doc(db, 'companies', id));
+      return { id, ...(snap.exists() && str(snap.data().name) !== undefined ? { name: str(snap.data().name) as string } : {}) };
     },
 
     subscribeCustomers(companyId, cb) {
@@ -265,22 +278,49 @@ export function createFirestoreServices(db: Firestore): Services {
     },
 
     subscribeAllowlist(companyId, cb) {
-      const q = query(collection(db, 'allowlist'), where('companyId', '==', companyId));
-      return onSnapshot(q, (snap) =>
-        cb(
-          snap.docs
-            .map((s) => ({ email: s.id, companyId: str(s.data().companyId) ?? '' }))
-            .sort((a, b) => a.email.localeCompare(b.email)),
-        ),
-      );
+      // Members of this company come in two shapes: new entries carry a
+      // companyIds array; legacy entries a single companyId. Watch both and
+      // merge by email so neither form is missed during the transition.
+      let listForm: AllowlistEntry[] = [];
+      let legacyForm: AllowlistEntry[] = [];
+      const emit = () => {
+        const byEmail = new Map<string, AllowlistEntry>();
+        for (const e of [...legacyForm, ...listForm]) byEmail.set(e.email, e);
+        cb([...byEmail.values()].sort((a, b) => a.email.localeCompare(b.email)));
+      };
+      const toEntry = (id: string): AllowlistEntry => ({ email: id, companyId });
+      const u1 = onSnapshot(query(collection(db, 'allowlist'), where('companyIds', 'array-contains', companyId)), (snap) => {
+        listForm = snap.docs.map((s) => toEntry(s.id));
+        emit();
+      });
+      const u2 = onSnapshot(query(collection(db, 'allowlist'), where('companyId', '==', companyId)), (snap) => {
+        legacyForm = snap.docs.map((s) => toEntry(s.id));
+        emit();
+      });
+      return () => {
+        u1();
+        u2();
+      };
     },
 
     async addUser(email, companyId) {
-      await setDoc(doc(db, 'allowlist', email.trim().toLowerCase()), { companyId });
+      const ref = doc(db, 'allowlist', email.trim().toLowerCase());
+      // Read-modify-write (not arrayUnion) so a legacy single companyId is
+      // carried into the list instead of being dropped when we migrate the doc.
+      const snap = await getDoc(ref);
+      const existing = snap.exists() ? entryCompaniesOf(snap.data()) : [];
+      const companyIds = Array.from(new Set([...existing, companyId]));
+      await setDoc(ref, { companyIds, companyId: deleteField() }, { merge: true });
     },
 
-    async removeUser(email) {
-      await deleteDoc(doc(db, 'allowlist', email));
+    async removeUser(email, companyId) {
+      const ref = doc(db, 'allowlist', email);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+      const remaining = entryCompaniesOf(snap.data()).filter((c) => c !== companyId);
+      // Drop the whole entry only when the user has no companies left.
+      if (remaining.length === 0) await deleteDoc(ref);
+      else await setDoc(ref, { companyIds: remaining, companyId: deleteField() }, { merge: true });
     },
 
     async createSecret(secret, ttlDays = 7) {

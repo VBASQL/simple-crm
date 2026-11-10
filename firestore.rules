@@ -18,21 +18,30 @@ service cloud.firestore {
     function isAllowed() {
       return request.auth != null && request.auth.token.email != null && exists(allowlistRef());
     }
-    function myCompanyId() {
-      return get(allowlistRef()).data.companyId;
+    // A member may belong to several companies. We support both the list form
+    // (companyIds) and the legacy single companyId so existing entries keep
+    // working without a migration.
+    function entryCompanies(data) {
+      return ('companyIds' in data) ? data.companyIds : [data.companyId];
+    }
+    function myCompanies() {
+      return entryCompanies(get(allowlistRef()).data);
     }
     function sameCompany(companyId) {
-      return isAllowed() && companyId == myCompanyId();
+      return isAllowed() && (companyId in myCompanies());
     }
 
     // Allow-list. A user may read their own entry, and any allow-listed user
-    // may read and manage every entry in their own company (the Users screen).
-    // No one can grant access to a different company.
+    // may read and manage entries that share a company with them (the Users
+    // screen). Flat trust within a company: hasAny means the editor touches an
+    // entry only when they themselves belong to one of its companies, so no one
+    // can grant or revoke access to a company they are not a member of.
     match /allowlist/{email} {
       allow read: if request.auth != null
-                  && (request.auth.token.email == email || (isAllowed() && resource.data.companyId == myCompanyId()));
-      allow create, update: if sameCompany(request.resource.data.companyId);
-      allow delete: if sameCompany(resource.data.companyId);
+                  && (request.auth.token.email == email
+                      || (isAllowed() && entryCompanies(resource.data).hasAny(myCompanies())));
+      allow create, update: if isAllowed() && entryCompanies(request.resource.data).hasAny(myCompanies());
+      allow delete: if isAllowed() && entryCompanies(resource.data).hasAny(myCompanies());
     }
 
     match /companies/{companyId} {

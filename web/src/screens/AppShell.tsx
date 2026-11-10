@@ -16,9 +16,10 @@ const NAV: { to: string; icon: IconName; key: string; end?: boolean }[] = [
 ];
 
 export function AppShell() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, companies, activeCompanyId, setActiveCompany } = useAuth();
   const { t, locale, setLocale } = useI18n();
   const other: Locale = locale === 'he' ? 'en' : 'he';
+  const activeCompany = companies.find((c) => c.id === activeCompanyId);
 
   return (
     <div className="layout">
@@ -50,6 +51,24 @@ export function AppShell() {
 
       <div className="main">
         <header className="topbar">
+          {/* Company switcher — the active company scopes every screen. A plain
+              label when there is only one, a dropdown to switch when several. */}
+          {companies.length > 1 ? (
+            <label className="company-switch">
+              <Icon name="customers" size={15} />
+              <select value={activeCompanyId ?? ''} onChange={(e) => setActiveCompany(e.target.value)}>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name ?? c.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            activeCompany !== undefined && (
+              <span className="company-current">{activeCompany.name ?? activeCompany.id}</span>
+            )
+          )}
           <div className="topbar__spacer" />
           <button type="button" className="btn btn--ghost btn--sm" onClick={() => setLocale(other)}>
             {t(`locale.${other}`)}

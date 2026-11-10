@@ -18,6 +18,7 @@ if (isDemo) {
 }
 
 const COMPANY = 'co-1';
+const COMPANY2 = 'co-2';
 const CUSTOMER = 'cust-1';
 const ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS || '')
   .split(',')
@@ -36,11 +37,31 @@ await db.doc(`companies/${COMPANY}`).set({
   ticketAutoCloseDays: 14,
   retentionMonths: 12,
 });
+// A second company, to exercise the company switcher. Its data is isolated.
+await db.doc(`companies/${COMPANY2}`).set({
+  name: 'Globex',
+  timezone: 'Asia/Jerusalem',
+  language: 'he',
+  ticketAutoCloseDays: 14,
+  retentionMonths: 12,
+});
 await db.doc('dids/d1').set({ number: '+97237654321', companyId: COMPANY, label: 'Main line' });
+await db.doc('dids/d2').set({ number: '+97239998888', companyId: COMPANY2, label: 'Globex line' });
+await db.doc('customers/cust-2').set({
+  companyId: COMPANY2,
+  name: 'Dana Levi',
+  phones: ['+972547776655'],
+  emails: [],
+  source: 'phone',
+  createdAt: new Date(now - 86_400_000),
+  lastContactAt: new Date(now - 3_600_000),
+  tags: [],
+});
 
-// Allow-list: each email may sign in with Google and gets this company.
+// Allow-list: each email may sign in with Google and belongs to BOTH companies
+// (companyIds), so the switcher has something to switch between.
 for (const email of ALLOWED_EMAILS) {
-  await db.doc(`allowlist/${email}`).set({ companyId: COMPANY, name: email.split('@')[0] });
+  await db.doc(`allowlist/${email}`).set({ companyIds: [COMPANY, COMPANY2], name: email.split('@')[0] });
 }
 
 await db.doc(`customers/${CUSTOMER}`).set({

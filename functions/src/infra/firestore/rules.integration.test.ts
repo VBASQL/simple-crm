@@ -35,6 +35,8 @@ beforeEach(async () => {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await setDoc(doc(db, 'allowlist', 'user@co1.com'), { companyId: 'co-1' });
+    // A member of two companies, in the new companyIds (array) form.
+    await setDoc(doc(db, 'allowlist', 'multi@co.com'), { companyIds: ['co-1', 'co-2'] });
     await setDoc(doc(db, 'customers', 'c1'), { companyId: 'co-1', name: 'Own company' });
     await setDoc(doc(db, 'customers', 'c2'), { companyId: 'co-2', name: 'Other company' });
     // A ticket and an existing event, to test agent updates and note immutability.
@@ -44,6 +46,7 @@ beforeEach(async () => {
 });
 
 const member = () => testEnv.authenticatedContext('u-1', { email: 'user@co1.com' }).firestore();
+const multi = () => testEnv.authenticatedContext('u-2', { email: 'multi@co.com' }).firestore();
 const stranger = () => testEnv.authenticatedContext('u-x', { email: 'nobody@elsewhere.com' }).firestore();
 
 describe('Firestore security rules (flat allow-list)', () => {
@@ -53,6 +56,19 @@ describe('Firestore security rules (flat allow-list)', () => {
 
   it('denies cross-company reads', async () => {
     await assertFails(getDoc(doc(member(), 'customers', 'c2')));
+  });
+
+  it('lets a multi-company member read data in each of their companies', async () => {
+    await assertSucceeds(getDoc(doc(multi(), 'customers', 'c1')));
+    await assertSucceeds(getDoc(doc(multi(), 'customers', 'c2')));
+  });
+
+  it('lets a multi-company member add a user to a company they belong to', async () => {
+    await assertSucceeds(setDoc(doc(multi(), 'allowlist', 'new@co.com'), { companyIds: ['co-2'] }));
+  });
+
+  it('stops adding a user to a company the editor does not belong to', async () => {
+    await assertFails(setDoc(doc(member(), 'allowlist', 'x@co.com'), { companyIds: ['co-2'] }));
   });
 
   it('denies an email that is not on the allow-list', async () => {

@@ -43,7 +43,9 @@ beforeEach(async () => {
     await setDoc(doc(db, 'customers', 'c2'), { companyId: 'co-2', name: 'Other company' });
     // A ticket and an existing event, to test agent updates and note immutability.
     await setDoc(doc(db, 'tickets', 'tk1'), { companyId: 'co-1', customerId: 'c1', status: 'open' });
-    await setDoc(doc(db, 'events', 'e1'), { companyId: 'co-1', customerId: 'c1', type: 'call', summary: 'inbound' });
+    await setDoc(doc(db, 'events', 'e1'), { companyId: 'co-1', customerId: 'c1', ticketId: 'tk1', type: 'call', summary: 'inbound' });
+    await setDoc(doc(db, 'notes', 'n1'), { companyId: 'co-1', customerId: 'c1', text: 'own note', author: 'user@co1.com' });
+    await setDoc(doc(db, 'notes', 'n2'), { companyId: 'co-1', customerId: 'c1', text: 'someone elses', author: 'user@co1.com' });
   });
 });
 
@@ -104,20 +106,12 @@ describe('Firestore security rules (flat allow-list)', () => {
     await assertSucceeds(updateDoc(doc(member(), 'tickets', 'tk1'), { status: 'closed' }));
   });
 
-  it('lets an allow-listed user append a manual note or meeting to the timeline', async () => {
+  it('lets an allow-listed user log a manual interaction (call/email/meeting)', async () => {
     await assertSucceeds(
       addDoc(collection(member(), 'events'), {
         companyId: 'co-1',
         customerId: 'c1',
-        type: 'note',
-        summary: 'Called back',
-        source: 'manual',
-      }),
-    );
-    await assertSucceeds(
-      addDoc(collection(member(), 'events'), {
-        companyId: 'co-1',
-        customerId: 'c1',
+        ticketId: 'tk1',
         type: 'meeting',
         summary: 'Met at the office',
         source: 'manual',
@@ -137,33 +131,57 @@ describe('Firestore security rules (flat allow-list)', () => {
     );
   });
 
-  it('stops a manual entry of a type outside the allowed set', async () => {
+  it('stops a manual event type outside the interaction set (note/voicemail)', async () => {
+    // Notes are a separate collection now, not an event type.
     await assertFails(
       addDoc(collection(member(), 'events'), {
         companyId: 'co-1',
         customerId: 'c1',
-        type: 'voicemail',
-        summary: 'fake voicemail',
+        type: 'note',
+        summary: 'should be a note doc',
         source: 'manual',
       }),
     );
   });
 
-  it('stops adding an entry to another company', async () => {
+  it('stops logging an interaction into another company', async () => {
     await assertFails(
       addDoc(collection(member(), 'events'), {
         companyId: 'co-2',
         customerId: 'c2',
-        type: 'note',
+        type: 'call',
         summary: 'intrusion',
         source: 'manual',
       }),
     );
   });
 
-  it('keeps timeline events immutable (no edit, no delete)', async () => {
+  it('lets an event be moved to another ticket, but not its content changed or deleted', async () => {
+    await assertSucceeds(updateDoc(doc(member(), 'events', 'e1'), { ticketId: 'tk1' }));
     await assertFails(updateDoc(doc(member(), 'events', 'e1'), { summary: 'tampered' }));
     await assertFails(deleteDoc(doc(member(), 'events', 'e1')));
+  });
+
+  it('lets a member add a note and delete their own, guarding author and company', async () => {
+    // A note must be stamped with the caller's own email as author.
+    await assertSucceeds(
+      addDoc(collection(member(), 'notes'), {
+        companyId: 'co-1',
+        customerId: 'c1',
+        text: 'Spoke to the client',
+        author: 'user@co1.com',
+      }),
+    );
+    // Cannot forge another author, nor write into another company.
+    await assertFails(
+      addDoc(collection(member(), 'notes'), { companyId: 'co-1', customerId: 'c1', text: 'x', author: 'someone@else.com' }),
+    );
+    await assertFails(
+      addDoc(collection(member(), 'notes'), { companyId: 'co-2', customerId: 'c2', text: 'x', author: 'user@co1.com' }),
+    );
+    // The author may delete their own note; a different member may not.
+    await assertSucceeds(deleteDoc(doc(member(), 'notes', 'n1')));
+    await assertFails(deleteDoc(doc(multi(), 'notes', 'n2')));
   });
 
   it('lets a member edit their own company settings', async () => {

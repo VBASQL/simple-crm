@@ -95,6 +95,20 @@ export interface Ticket {
   readonly pinned?: boolean;
 }
 
+/** Free-text commentary, separate from interaction events. Hangs off a
+ *  customer and may be narrowed to a ticket, call or event. */
+export interface Note {
+  readonly id: string;
+  readonly companyId: string;
+  readonly customerId: string;
+  readonly ticketId?: string;
+  readonly callId?: string;
+  readonly eventId?: string;
+  readonly text: string;
+  readonly author?: string;
+  readonly at?: Date;
+}
+
 export interface TimelineEvent {
   readonly id: string;
   readonly companyId: string;

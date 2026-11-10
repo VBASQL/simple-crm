@@ -6,11 +6,15 @@ import { useI18n } from '../i18n/i18n.js';
 import { relativeTime, formatDateTime } from '../format.js';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
-import { EntryComposer } from '../components/EntryComposer.js';
 import { PinButton } from '../components/PinButton.js';
-import type { Customer, Ticket, TicketStatus, TimelineEvent } from '../types.js';
+import { NoteComposer } from '../components/NoteComposer.js';
+import { NotesList } from '../components/NotesList.js';
+import { InteractionLogger } from '../components/InteractionLogger.js';
+import { MoveEvent } from '../components/MoveEvent.js';
+import type { Customer, Note, Ticket, TicketStatus, TimelineEvent } from '../types.js';
 
 const STATUSES: TicketStatus[] = ['open', 'pending', 'closed'];
+const callIdOf = (e: TimelineEvent): string | undefined => (e.payload as { callId?: string } | undefined)?.callId;
 
 export function TicketDetail() {
   const { ticketId = '' } = useParams();
@@ -21,9 +25,12 @@ export function TicketDetail() {
   const [ticket, setTicket] = useState<Ticket | null | undefined>(undefined);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [allTickets, setAllTickets] = useState<Ticket[]>([]);
 
   const [editingSubject, setEditingSubject] = useState(false);
   const [subjectDraft, setSubjectDraft] = useState('');
+  const [noteFor, setNoteFor] = useState<string | null>(null); // eventId whose note box is open
   const [error, setError] = useState<string | null>(null);
 
   const companyId = profile?.companyId;
@@ -35,12 +42,20 @@ export function TicketDetail() {
     return services.subscribeTicketEvents(companyId, ticketId, setEvents);
   }, [services, companyId, ticketId]);
 
-  // Resolve the customer once we know who the ticket belongs to.
   const customerId = ticket?.customerId;
   useEffect(() => {
     if (customerId === undefined) return;
     void services.getCustomer(customerId).then(setCustomer);
   }, [services, customerId]);
+
+  useEffect(() => {
+    if (companyId === undefined || customerId === undefined) return;
+    const unsubs = [
+      services.subscribeNotes(companyId, customerId, setNotes),
+      services.subscribeCustomerTickets(companyId, customerId, setAllTickets),
+    ];
+    return () => unsubs.forEach((u) => u());
+  }, [services, companyId, customerId]);
 
   if (ticket === undefined) return <p className="muted">{t('common.loading')}</p>;
   if (ticket === null)
@@ -56,8 +71,10 @@ export function TicketDetail() {
       </section>
     );
 
-  const tk = ticket; // narrowed, non-null below
+  const tk = ticket;
   const custName = customer?.name ?? t('common.unknownCustomer');
+  // Ticket-level notes: on the ticket but not tied to a specific event or call.
+  const ticketNotes = notes.filter((n) => n.ticketId === ticketId && n.eventId === undefined && n.callId === undefined);
 
   async function setStatus(status: TicketStatus) {
     setError(null);
@@ -72,7 +89,6 @@ export function TicketDetail() {
     const next = subjectDraft.trim();
     setEditingSubject(false);
     if (next === (tk.subject ?? '')) return;
-    setError(null);
     try {
       await services.setTicketSubject(ticketId, next);
     } catch {
@@ -90,13 +106,7 @@ export function TicketDetail() {
       <div className="detail-head">
         <div className="detail-head__main">
           {editingSubject ? (
-            <form
-              className="subject-edit"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void saveSubject();
-              }}
-            >
+            <form className="subject-edit" onSubmit={(e) => { e.preventDefault(); void saveSubject(); }}>
               <input
                 type="text"
                 autoFocus
@@ -105,19 +115,14 @@ export function TicketDetail() {
                 onChange={(e) => setSubjectDraft(e.target.value)}
                 onBlur={() => void saveSubject()}
               />
-              <button type="submit" className="btn btn--primary btn--sm">
-                {t('ticketDetail.save')}
-              </button>
+              <button type="submit" className="btn btn--primary btn--sm">{t('ticketDetail.save')}</button>
             </form>
           ) : (
             <button
               type="button"
               className="subject-view"
               title={t('ticketDetail.editSubject')}
-              onClick={() => {
-                setSubjectDraft(tk.subject ?? '');
-                setEditingSubject(true);
-              }}
+              onClick={() => { setSubjectDraft(tk.subject ?? ''); setEditingSubject(true); }}
             >
               <h1>{tk.subject ?? t('tickets.noSubject')}</h1>
               <Icon name="plus" size={14} />
@@ -130,12 +135,7 @@ export function TicketDetail() {
         </div>
 
         <div className="detail-head__actions">
-          <PinButton
-            pinned={tk.pinned === true}
-            onToggle={(next) => void services.setTicketPinned(ticketId, next)}
-          />
-          {/* Status picker — the one action an agent takes most, so it is the
-              most prominent control on the page. */}
+          <PinButton pinned={tk.pinned === true} onToggle={(next) => void services.setTicketPinned(ticketId, next)} />
           <div className="segmented" role="group" aria-label={t('ticketDetail.status')}>
             {STATUSES.map((s) => (
               <button
@@ -152,43 +152,72 @@ export function TicketDetail() {
       </div>
 
       <div className="detail-meta muted">
-        <span>
-          {t('ticketDetail.opened')}: {formatDateTime(tk.openedAt, locale)}
-        </span>
-        <span>
-          {t('ticketDetail.lastActivity')}: {relativeTime(tk.lastActivityAt, locale)}
-        </span>
+        <span>{t('ticketDetail.opened')}: {formatDateTime(tk.openedAt, locale)}</span>
+        <span>{t('ticketDetail.lastActivity')}: {relativeTime(tk.lastActivityAt, locale)}</span>
       </div>
 
       {error !== null && <p className="error">{error}</p>}
 
-      <div className="card card--pad" style={{ marginTop: '1rem' }}>
-        <h2>{t('ticketDetail.notesTitle')}</h2>
+      <div className="grid-2" style={{ marginTop: '1rem' }}>
+        {/* Interaction timeline — calls, emails, meetings on this ticket. */}
+        <div className="card card--pad">
+          <h2>{t('ticketDetail.timeline')}</h2>
+          {companyId !== undefined && customerId !== undefined && (
+            <InteractionLogger companyId={companyId} customerId={customerId} ticketId={ticketId} author={profile?.email} />
+          )}
 
-        {companyId !== undefined && (
-          <EntryComposer
-            companyId={companyId}
-            customerId={tk.customerId}
-            ticketId={ticketId}
-            author={profile?.email}
-          />
-        )}
+          {events.length === 0 ? (
+            <p className="muted" style={{ marginTop: '1rem' }}>{t('ticketDetail.noActivity')}</p>
+          ) : (
+            <ul className="events" style={{ marginTop: '1rem' }}>
+              {events.map((e) => {
+                const callId = callIdOf(e);
+                const eventNotes = notes.filter((n) => n.eventId === e.id);
+                return (
+                  <li key={e.id} className="event">
+                    <div className="event__row">
+                      <span className={`badge badge--${e.type}`}>{t(`event.type.${e.type}`)}</span>
+                      {callId !== undefined ? (
+                        <Link to={`/calls/${callId}`} className="grow link">{e.summary}</Link>
+                      ) : (
+                        <span className="grow">{e.summary}</span>
+                      )}
+                      <span className="muted">{relativeTime(e.at, locale)}</span>
+                    </div>
+                    <div className="event__actions">
+                      <button type="button" className="btn btn--sm btn--ghost" onClick={() => setNoteFor(noteFor === e.id ? null : e.id)}>
+                        <Icon name="plus" size={13} />
+                        {t('note.add')}
+                      </button>
+                      <MoveEvent eventId={e.id} currentTicketId={e.ticketId} tickets={allTickets} />
+                    </div>
+                    {noteFor === e.id && companyId !== undefined && customerId !== undefined && (
+                      <div className="event__note">
+                        <NoteComposer companyId={companyId} customerId={customerId} ticketId={ticketId} eventId={e.id} author={profile?.email} compact />
+                      </div>
+                    )}
+                    {eventNotes.length > 0 && <NotesList notes={eventNotes} />}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
 
-        {events.length === 0 ? (
-          <p className="muted" style={{ marginTop: '1rem' }}>
-            {t('ticketDetail.noActivity')}
-          </p>
-        ) : (
-          <ul className="timeline" style={{ marginTop: '1rem' }}>
-            {events.map((e) => (
-              <li key={e.id}>
-                <span className={`badge badge--${e.type}`}>{t(`event.type.${e.type}`)}</span>
-                <span className="grow">{e.summary}</span>
-                <span className="muted">{relativeTime(e.at, locale)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        {/* Ticket notes — commentary on the ticket itself. */}
+        <div className="card card--pad">
+          <h2>{t('ticketDetail.notesTitle')}</h2>
+          {companyId !== undefined && customerId !== undefined && (
+            <NoteComposer companyId={companyId} customerId={customerId} ticketId={ticketId} author={profile?.email} />
+          )}
+          {ticketNotes.length === 0 ? (
+            <p className="muted" style={{ marginTop: '0.8rem' }}>{t('ticketDetail.noNotes')}</p>
+          ) : (
+            <div style={{ marginTop: '0.8rem' }}>
+              <NotesList notes={ticketNotes} />
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

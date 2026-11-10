@@ -1,36 +1,30 @@
 import { useState, type FormEvent } from 'react';
 import { useServices } from '../services/ServicesContext.js';
-import type { ManualEntryType } from '../services/firestoreServices.js';
+import type { InteractionType } from '../services/firestoreServices.js';
 import { useI18n } from '../i18n/i18n.js';
 import { Icon } from './Icon.js';
 
-const KINDS: ManualEntryType[] = ['note', 'call', 'email', 'meeting'];
+const KINDS: InteractionType[] = ['call', 'email', 'meeting'];
 
 /**
- * Log a manual timeline entry: a plain note, or something not captured
- * automatically — a call on another phone, an email, an in-person meeting.
- * One composer, reused on the customer, ticket and call pages; the caller
- * decides which thread it lands on by passing ticketId / callId.
+ * Log an interaction that was not captured automatically — a call on another
+ * phone, an email, or an in-person meeting. Always lands on a ticket (every
+ * interaction belongs to a ticket). Distinct from a note, which is commentary.
  */
-export function EntryComposer({
+export function InteractionLogger({
   companyId,
   customerId,
   ticketId,
-  callId,
   author,
-  defaultType = 'note',
 }: {
   companyId: string;
   customerId: string;
-  ticketId?: string;
-  callId?: string;
+  ticketId: string;
   author?: string;
-  defaultType?: ManualEntryType;
 }) {
   const services = useServices();
   const { t } = useI18n();
-
-  const [type, setType] = useState<ManualEntryType>(defaultType);
+  const [type, setType] = useState<InteractionType>('call');
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,19 +36,11 @@ export function EntryComposer({
     setBusy(true);
     setError(null);
     try {
-      await services.addEntry({
-        companyId,
-        customerId,
-        type,
-        text: body,
-        ...(ticketId !== undefined ? { ticketId } : {}),
-        ...(callId !== undefined ? { callId } : {}),
-        ...(author !== undefined ? { author } : {}),
-      });
+      await services.logInteraction({ companyId, customerId, ticketId, type, text: body, ...(author !== undefined ? { author } : {}) });
       setText('');
-      setType(defaultType);
+      setType('call');
     } catch {
-      setError(t('entry.failed'));
+      setError(t('interaction.failed'));
     } finally {
       setBusy(false);
     }
@@ -62,7 +48,7 @@ export function EntryComposer({
 
   return (
     <form className="composer" onSubmit={(e) => void onSubmit(e)}>
-      <div className="composer__kinds" role="group" aria-label={t('entry.kindLabel')}>
+      <div className="composer__kinds" role="group" aria-label={t('interaction.kindLabel')}>
         {KINDS.map((k) => (
           <button
             key={k}
@@ -70,7 +56,7 @@ export function EntryComposer({
             className={`chip chip--btn${type === k ? ' is-active' : ''}`}
             onClick={() => setType(k)}
           >
-            {t(`entry.kind.${k}`)}
+            {t(`event.type.${k}`)}
           </button>
         ))}
       </div>
@@ -78,13 +64,13 @@ export function EntryComposer({
         <textarea
           className="note-input"
           rows={2}
-          placeholder={t(`entry.placeholder.${type}`)}
+          placeholder={t(`interaction.placeholder.${type}`)}
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
         <button type="submit" className="btn btn--primary" disabled={busy || text.trim().length === 0}>
           <Icon name="plus" size={16} />
-          {busy ? t('entry.adding') : t('entry.add')}
+          {busy ? t('interaction.logging') : t('interaction.log')}
         </button>
       </div>
       {error !== null && <p className="error">{error}</p>}

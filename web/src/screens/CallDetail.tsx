@@ -6,8 +6,9 @@ import { useI18n } from '../i18n/i18n.js';
 import { formatDateTime, relativeTime } from '../format.js';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
-import { EntryComposer } from '../components/EntryComposer.js';
-import type { Call, Customer, TimelineEvent } from '../types.js';
+import { NoteComposer } from '../components/NoteComposer.js';
+import { NotesList } from '../components/NotesList.js';
+import type { Call, Customer, Note, TimelineEvent } from '../types.js';
 
 /** mm:ss for a duration in seconds; empty when unknown. */
 function duration(seconds: number | undefined): string {
@@ -26,6 +27,7 @@ export function CallDetail() {
   const [call, setCall] = useState<Call | null | undefined>(undefined);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
 
   const companyId = profile?.companyId;
 
@@ -37,17 +39,22 @@ export function CallDetail() {
     void services.getCustomer(customerId).then(setCustomer);
   }, [services, customerId]);
 
-  // The customer's whole timeline, filtered to this call — the CDR event, a
-  // missed-call marker, and every note taken here all carry payload.callId.
+  // The customer's timeline + notes, filtered to this call: the CDR event (via
+  // payload.callId) and every note anchored to this call (note.callId).
   useEffect(() => {
     if (companyId === undefined || customerId === undefined) return;
-    return services.subscribeCustomerEvents(companyId, customerId, setEvents);
+    const unsubs = [
+      services.subscribeCustomerEvents(companyId, customerId, setEvents),
+      services.subscribeNotes(companyId, customerId, setNotes),
+    ];
+    return () => unsubs.forEach((u) => u());
   }, [services, companyId, customerId]);
 
   const callEvents = useMemo(
     () => events.filter((e) => (e.payload as { callId?: string } | undefined)?.callId === callId),
     [events, callId],
   );
+  const callNotes = useMemo(() => notes.filter((n) => n.callId === callId), [notes, callId]);
 
   if (call === undefined) return <p className="muted">{t('common.loading')}</p>;
   if (call === null)
@@ -132,20 +139,16 @@ export function CallDetail() {
         </p>
 
         {companyId !== undefined && (
-          <EntryComposer
-            companyId={companyId}
-            customerId={c.customerId}
-            callId={callId}
-            author={profile?.email}
-            {...(c.ticketId !== undefined ? { ticketId: c.ticketId } : {})}
-          />
+          <NoteComposer companyId={companyId} customerId={c.customerId} callId={callId} author={profile?.email} />
         )}
 
-        {callEvents.length === 0 ? (
-          <p className="muted" style={{ marginTop: '1rem' }}>
-            {t('call.noNotes')}
-          </p>
-        ) : (
+        {callNotes.length > 0 && (
+          <div style={{ marginTop: '1rem' }}>
+            <NotesList notes={callNotes} />
+          </div>
+        )}
+
+        {callEvents.length > 0 && (
           <ul className="timeline" style={{ marginTop: '1rem' }}>
             {callEvents.map((e) => (
               <li key={e.id}>
@@ -155,6 +158,10 @@ export function CallDetail() {
               </li>
             ))}
           </ul>
+        )}
+
+        {callNotes.length === 0 && callEvents.length === 0 && (
+          <p className="muted" style={{ marginTop: '1rem' }}>{t('call.noNotes')}</p>
         )}
       </div>
     </section>

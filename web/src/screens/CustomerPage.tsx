@@ -3,15 +3,17 @@ import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
-import { relativeTime, formatDateTime } from '../format.js';
+import { relativeTime } from '../format.js';
 import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
-import { EntryComposer } from '../components/EntryComposer.js';
 import { PinButton } from '../components/PinButton.js';
-import type { Call, Customer, Ticket, TimelineEvent } from '../types.js';
+import { NoteComposer } from '../components/NoteComposer.js';
+import { NotesList } from '../components/NotesList.js';
+import type { Customer, Note, Ticket } from '../types.js';
 
-type Tab = 'timeline' | 'tickets' | 'calls';
-
+// Customer ▸ Ticket ▸ Call: the customer page shows the customer's TICKETS
+// (calls live under them) plus customer-level notes. Interactions and calls are
+// reached by opening a ticket.
 export function CustomerPage() {
   const { customerId = '' } = useParams();
   const { profile } = useAuth();
@@ -19,10 +21,8 @@ export function CustomerPage() {
   const { t, locale } = useI18n();
 
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [calls, setCalls] = useState<Call[]>([]);
-  const [tab, setTab] = useState<Tab>('timeline');
+  const [notes, setNotes] = useState<Note[]>([]);
 
   const companyId = profile?.companyId;
 
@@ -33,14 +33,15 @@ export function CustomerPage() {
   useEffect(() => {
     if (companyId === undefined) return;
     const unsubs = [
-      services.subscribeCustomerEvents(companyId, customerId, setEvents),
       services.subscribeCustomerTickets(companyId, customerId, setTickets),
-      services.subscribeCustomerCalls(companyId, customerId, setCalls),
+      services.subscribeNotes(companyId, customerId, setNotes),
     ];
     return () => unsubs.forEach((u) => u());
   }, [services, companyId, customerId]);
 
   const name = customer?.name ?? t('common.unknownCustomer');
+  // Customer-level notes: not tied to a ticket, call or event.
+  const customerNotes = notes.filter((n) => n.ticketId === undefined && n.callId === undefined && n.eventId === undefined);
 
   return (
     <section>
@@ -85,45 +86,17 @@ export function CustomerPage() {
         )}
       </div>
 
-      <div className="tabs">
-        {(['timeline', 'tickets', 'calls'] as Tab[]).map((x) => (
-          <button key={x} type="button" className={`tab${tab === x ? ' is-active' : ''}`} onClick={() => setTab(x)}>
-            {t(`customer.${x}`)}
-          </button>
-        ))}
-      </div>
-
-      <div className="card card--pad">
-        {tab === 'timeline' && (
-          <>
-            {companyId !== undefined && (
-              <EntryComposer companyId={companyId} customerId={customerId} author={profile?.email} />
-            )}
-            {events.length === 0 ? (
-              <p className="muted" style={{ marginTop: '1rem' }}>
-                {t('customer.noEvents')}
-              </p>
-            ) : (
-              <ul className="timeline" style={{ marginTop: '1rem' }}>
-                {events.map((e) => (
-                  <li key={e.id}>
-                    <span className={`badge badge--${e.type}`}>{t(`event.type.${e.type}`)}</span>
-                    <span className="grow">{e.summary}</span>
-                    <span className="muted">{relativeTime(e.at, locale)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        )}
-
-        {tab === 'tickets' &&
-          (tickets.length === 0 ? (
+      <div className="grid-2">
+        {/* Tickets — the customer's work, each nesting its own calls. */}
+        <div className="card card--pad">
+          <h2>{t('customer.tickets')}</h2>
+          {tickets.length === 0 ? (
             <p className="muted">{t('customer.noTickets')}</p>
           ) : (
             <ul className="list">
               {tickets.map((tk) => (
                 <li key={tk.id}>
+                  {tk.pinned === true && <Icon name="star" size={13} />}
                   <span className={`badge badge--${tk.status}`}>{t(`ticket.status.${tk.status}`)}</span>
                   <Link to={`/tickets/${tk.id}`} className="grow link">
                     {tk.subject ?? t('tickets.noSubject')}
@@ -132,24 +105,25 @@ export function CustomerPage() {
                 </li>
               ))}
             </ul>
-          ))}
+          )}
+        </div>
 
-        {tab === 'calls' &&
-          (calls.length === 0 ? (
-            <p className="muted">{t('callsLog.empty')}</p>
+        {/* Notes — general commentary about the client, separate from tickets. */}
+        <div className="card card--pad">
+          <h2>{t('customer.notes')}</h2>
+          {companyId !== undefined && (
+            <NoteComposer companyId={companyId} customerId={customerId} author={profile?.email} />
+          )}
+          {customerNotes.length === 0 ? (
+            <p className="muted" style={{ marginTop: '0.8rem' }}>
+              {t('customer.noNotes')}
+            </p>
           ) : (
-            <ul className="list">
-              {calls.map((c) => (
-                <li key={c.id}>
-                  <span className={`badge badge--${c.status}`}>{t(`call.status.${c.status}`)}</span>
-                  <Link to={`/calls/${c.id}`} className="grow link">
-                    {c.callerNumber ?? t('common.unknownCustomer')}
-                  </Link>
-                  <span className="muted">{formatDateTime(c.startTime, locale)}</span>
-                </li>
-              ))}
-            </ul>
-          ))}
+            <div style={{ marginTop: '0.8rem' }}>
+              <NotesList notes={customerNotes} />
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

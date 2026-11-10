@@ -24,6 +24,7 @@ import type {
   AllowlistEntry,
   Did,
   CompanySettings,
+  Note,
   Call,
   CallDirection,
   CallStatus,
@@ -86,25 +87,38 @@ export interface Services {
   setTicketPinned(ticketId: string, pinned: boolean): Promise<void>;
   setCustomerPinned(customerId: string, pinned: boolean): Promise<void>;
   /**
-   * Append a manual entry to the timeline (and bump the ticket when one is
-   * given). Covers a plain note and anything not captured automatically — a
-   * call from another phone, an email, an in-person meeting. Always written
-   * with source 'manual' so it is never confused with an engine-captured event.
+   * Log a manual INTERACTION not captured automatically — a call on another
+   * phone, an email, or an in-person meeting. Writes an interaction event on a
+   * ticket (source 'manual', never confused with an engine-captured event).
    */
-  addEntry(input: {
+  logInteraction(input: {
     companyId: string;
     customerId: string;
-    ticketId?: string;
-    /** The call this entry was taken on, so the call page can show it. */
-    callId?: string;
-    type?: ManualEntryType;
+    ticketId: string;
+    type: InteractionType;
     text: string;
     author?: string;
   }): Promise<void>;
+  /** Move an interaction event to a different ticket of the same customer. */
+  moveEvent(eventId: string, toTicketId: string): Promise<void>;
+
+  // Notes — free-text commentary, separate from interaction events. A note
+  // hangs off a customer and may be narrowed to a ticket, call or event.
+  subscribeNotes(companyId: string, customerId: string, cb: (notes: Note[]) => void): Unsubscribe;
+  addNote(input: {
+    companyId: string;
+    customerId: string;
+    ticketId?: string;
+    callId?: string;
+    eventId?: string;
+    text: string;
+    author?: string;
+  }): Promise<void>;
+  deleteNote(noteId: string): Promise<void>;
 }
 
-/** The timeline entry kinds an agent may log by hand. */
-export type ManualEntryType = 'note' | 'call' | 'email' | 'meeting';
+/** The interaction kinds an agent may log by hand (notes are separate). */
+export type InteractionType = 'call' | 'email' | 'meeting';
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 
@@ -188,6 +202,20 @@ function mapEvent(id: string, d: DocumentData): TimelineEvent {
     type: (str(d.type) as EventType) ?? 'note',
     summary: str(d.summary) ?? '',
     ...(typeof d.payload === 'object' && d.payload !== null ? { payload: d.payload as Record<string, unknown> } : {}),
+    at: date(d.at),
+  };
+}
+
+function mapNote(id: string, d: DocumentData): Note {
+  return {
+    id,
+    companyId: str(d.companyId) ?? '',
+    customerId: str(d.customerId) ?? '',
+    ...(str(d.ticketId) !== undefined ? { ticketId: str(d.ticketId) } : {}),
+    ...(str(d.callId) !== undefined ? { callId: str(d.callId) } : {}),
+    ...(str(d.eventId) !== undefined ? { eventId: str(d.eventId) } : {}),
+    text: str(d.text) ?? '',
+    ...(str(d.author) !== undefined ? { author: str(d.author) } : {}),
     at: date(d.at),
   };
 }
@@ -431,30 +459,58 @@ export function createFirestoreServices(db: Firestore): Services {
       await updateDoc(doc(db, 'customers', customerId), { pinned: pinned ? true : deleteField() });
     },
 
-    async addEntry({ companyId, customerId, ticketId, callId, type = 'note', text, author }) {
-      // A manual entry is a first-class timeline event — same shape the engine
-      // writes — so it threads into the customer history next to captured calls
-      // and emails. source 'manual' keeps it distinct from engine events. An
-      // entry taken on a call carries its callId (the call page shows it), and
-      // its ticketId so it lands on the ticket timeline too.
+    async logInteraction({ companyId, customerId, ticketId, type, text, author }) {
+      // An interaction is a first-class timeline event — same shape the engine
+      // writes — so it threads into the ticket next to captured calls. source
+      // 'manual' keeps it distinct from engine events.
       await addDoc(collection(db, 'events'), {
         companyId,
         customerId,
-        ...(ticketId !== undefined ? { ticketId } : {}),
+        ticketId,
         type,
         summary: text,
-        payload: {
-          ...(author !== undefined ? { author } : {}),
-          ...(callId !== undefined ? { callId } : {}),
-        },
+        payload: author !== undefined ? { author } : {},
         at: serverTimestamp(),
         source: 'manual',
       });
-      // A note is activity: bump the ticket so it sorts up and stays off the
+      // Logging activity bumps the ticket so it sorts up and stays off the
       // auto-close path.
+      await updateDoc(doc(db, 'tickets', ticketId), { lastActivityAt: serverTimestamp() });
+    },
+
+    async moveEvent(eventId, toTicketId) {
+      // Only ticketId changes (rules enforce it); the event's content is intact.
+      await updateDoc(doc(db, 'events', eventId), { ticketId: toTicketId });
+    },
+
+    subscribeNotes(companyId, customerId, cb) {
+      const q = query(
+        collection(db, 'notes'),
+        where('companyId', '==', companyId),
+        where('customerId', '==', customerId),
+      );
+      return onSnapshot(q, (snap) => cb(snap.docs.map((s) => mapNote(s.id, s.data())).sort(byTimeDesc)));
+    },
+
+    async addNote({ companyId, customerId, ticketId, callId, eventId, text, author }) {
+      await addDoc(collection(db, 'notes'), {
+        companyId,
+        customerId,
+        ...(ticketId !== undefined ? { ticketId } : {}),
+        ...(callId !== undefined ? { callId } : {}),
+        ...(eventId !== undefined ? { eventId } : {}),
+        text,
+        ...(author !== undefined ? { author } : {}),
+        at: serverTimestamp(),
+      });
+      // A note on a ticket counts as activity too.
       if (ticketId !== undefined) {
         await updateDoc(doc(db, 'tickets', ticketId), { lastActivityAt: serverTimestamp() });
       }
+    },
+
+    async deleteNote(noteId) {
+      await deleteDoc(doc(db, 'notes', noteId));
     },
   };
 }

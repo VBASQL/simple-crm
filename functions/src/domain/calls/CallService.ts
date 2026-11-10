@@ -281,7 +281,11 @@ export class CallService {
       didNumber = line;
       created = customer.created;
       if (dest !== null) callerNumber = dest;
-      // No ticket: outbound is logged on the customer only.
+      // Every call belongs to a ticket (Customer ▸ Ticket ▸ Call), so an
+      // outbound call opens or resumes one for the dialled customer just like
+      // an inbound call does — the record is always reachable through a ticket.
+      const t = await this.tickets.openOrResume({ companyId, customerId, openedBy: 'call' });
+      ticketId = t.ticket.id;
     } else {
       // internal — extension-to-extension, not a customer interaction.
       return this.ignored(p, 'internal_not_routed');

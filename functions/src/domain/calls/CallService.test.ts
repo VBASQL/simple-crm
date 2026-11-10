@@ -199,7 +199,7 @@ describe('CallService.handle', () => {
     expect(customers.createCount).toBe(1);
   });
 
-  it('routes an outbound cdr by the outbound line, customer = dialled number, no ticket', async () => {
+  it('routes an outbound cdr by the outbound line, customer = dialled number, opens a ticket', async () => {
     const { svc, calls, tickets, customers } = makeSut();
     const out = await svc.handle(
       payload('cdr', {
@@ -210,13 +210,14 @@ describe('CallService.handle', () => {
       }),
     );
 
-    expect(out).toMatchObject({ result: 'applied', companyId: 'co-1', ticket: 'none' });
+    // Every call belongs to a ticket now, so an outbound call opens one too.
+    expect(out).toMatchObject({ result: 'applied', companyId: 'co-1', ticket: 'resumed' });
     const call = calls.byId.get(CALL_ID);
     expect(call?.direction).toBe('outbound');
     expect(call?.didNumber).toBe(DID_E164);
     expect(call?.callerNumber).toBe('+972528889999');
-    expect(call?.ticketId).toBeUndefined();
-    expect(tickets.createCount).toBe(0);
+    expect(call?.ticketId).toBeDefined();
+    expect(tickets.createCount).toBe(1);
     expect(customers.byId.get(call?.customerId ?? '')?.phones).toContain('+972528889999');
   });
 

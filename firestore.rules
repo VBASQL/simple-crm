@@ -72,21 +72,40 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Timeline events are INTERACTIONS: a call, email or meeting. Notes are a
+    // separate thing (see /notes). Agents may log a manual interaction not
+    // captured automatically (a call on another phone, an email, an in-person
+    // meeting); it must be marked source 'manual' so it can never masquerade as
+    // an engine-captured event, and limited to that safe set of types. All
+    // other events are written by Cloud Functions (Admin SDK) only.
     match /events/{eventId} {
       allow read: if sameCompany(resource.data.companyId);
-      // Agents may log manual timeline entries — a note, or something not
-      // captured automatically (a call on another phone, an email, an in-person
-      // meeting). Every such write must be marked source 'manual', so it can
-      // never masquerade as an engine-captured event, and limited to that safe
-      // set of types (no forging voicemail/order/subscription). All other
-      // events are written by Cloud Functions (Admin SDK) only. Entries are
-      // immutable once written — history is not rewritten.
       allow create: if sameCompany(request.resource.data.companyId)
                     && request.resource.data.source == 'manual'
-                    && request.resource.data.type in ['note', 'call', 'email', 'meeting']
+                    && request.resource.data.type in ['call', 'email', 'meeting']
                     && request.resource.data.customerId is string
                     && request.resource.data.summary is string;
-      allow update, delete: if false;
+      // An event may be re-filed to a different ticket (Customer ▸ Ticket ▸
+      // Call): only ticketId may change, never the event's content, so history
+      // stays intact while it moves between tickets.
+      allow update: if sameCompany(resource.data.companyId)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ticketId']);
+      allow delete: if false;
+    }
+
+    // Notes: free-text commentary, separate from interaction events. A note
+    // always hangs off a customer and may be narrowed to a ticket, call or
+    // event. Stamped with the author's email (unforgeable); the author may
+    // delete their own, and no one edits a note in place.
+    match /notes/{noteId} {
+      allow read: if sameCompany(resource.data.companyId);
+      allow create: if sameCompany(request.resource.data.companyId)
+                    && request.resource.data.author == request.auth.token.email
+                    && request.resource.data.customerId is string
+                    && request.resource.data.text is string;
+      allow update: if false;
+      allow delete: if sameCompany(resource.data.companyId)
+                    && resource.data.author == request.auth.token.email;
     }
 
     match /ringing/{callId} {

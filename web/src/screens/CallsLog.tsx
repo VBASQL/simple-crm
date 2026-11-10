@@ -75,7 +75,7 @@ export function CallsLog() {
               {calls.map((c) => {
                 const name = nameOf(c.customerId);
                 return (
-                  <tr key={c.id} className="row" onClick={() => navigate(`/calls/${c.id}`)}>
+                  <tr key={c.id} className="row" onClick={() => navigate(`/calls/${c.id}?back=/`)}>
                     <td>
                       <div className="cell-main">
                         <Avatar name={name ?? c.callerNumber} size={32} />

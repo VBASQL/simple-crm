@@ -4,24 +4,24 @@ import { Icon } from './Icon.js';
 import type { Ticket } from '../types.js';
 
 /**
- * Re-file a call or interaction onto a different ticket of the same customer.
- * Generic over what moves: the caller supplies onMove(toTicketId). The list is
- * the customer's other tickets, so an item threaded onto the wrong ticket can
- * be corrected.
+ * Re-file a call or interaction onto a different ticket of the same customer —
+ * an existing one, or a brand-new ticket. Generic over what moves: the caller
+ * supplies onMove(toTicketId) and onMoveToNew() (create a ticket + move onto it).
  */
 export function MoveTo({
   currentTicketId,
   tickets,
   onMove,
+  onMoveToNew,
 }: {
   currentTicketId?: string;
   tickets: Ticket[];
   onMove: (toTicketId: string) => void;
+  onMoveToNew?: () => void;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const others = tickets.filter((tk) => tk.id !== currentTicketId);
-  if (others.length === 0) return null;
 
   return (
     <span className="menu">
@@ -46,6 +46,19 @@ export function MoveTo({
                 {tk.subject ?? t('tickets.noSubject')}
               </button>
             ))}
+            {onMoveToNew !== undefined && (
+              <button
+                type="button"
+                className="menu__item"
+                onClick={() => {
+                  onMoveToNew();
+                  setOpen(false);
+                }}
+              >
+                <Icon name="plus" size={14} />
+                <span>{t('event.moveToNew')}</span>
+              </button>
+            )}
           </div>
         </>
       )}

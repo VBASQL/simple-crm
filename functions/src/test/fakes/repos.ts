@@ -89,10 +89,12 @@ export class InMemoryTicketRepo implements TicketRepo {
   createCount = 0;
 
   async findOpen(companyId: string, customerId: string): Promise<Ticket | null> {
-    for (const t of this.byId.values()) {
-      if (t.companyId === companyId && t.customerId === customerId && t.status !== 'closed') return t;
-    }
-    return null;
+    // A client may have several open tickets; a call routes to the most
+    // recently active one (deterministic), so we sort rather than take any.
+    const open = [...this.byId.values()]
+      .filter((t) => t.companyId === companyId && t.customerId === customerId && t.status !== 'closed')
+      .sort((a, b) => b.lastActivityAt.getTime() - a.lastActivityAt.getTime());
+    return open[0] ?? null;
   }
   async create(ticket: Ticket): Promise<Ticket> {
     this.createCount += 1;

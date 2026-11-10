@@ -137,7 +137,7 @@ export function Search() {
                   key={c.id}
                   type="button"
                   className="result"
-                  onClick={() => navigate(c.ticketId !== undefined ? `/calls/${c.id}?from=${c.ticketId}` : `/calls/${c.id}`)}
+                  onClick={() => navigate(`/calls/${c.id}?back=/search`)}
                 >
                   <span className={`badge badge--${c.status}`}>{t(`call.status.${c.status}`)}</span>
                   <div className="result__main">

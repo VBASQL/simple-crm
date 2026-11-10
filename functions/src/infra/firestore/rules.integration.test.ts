@@ -44,6 +44,7 @@ beforeEach(async () => {
     // A ticket and an existing event, to test agent updates and note immutability.
     await setDoc(doc(db, 'tickets', 'tk1'), { companyId: 'co-1', customerId: 'c1', status: 'open' });
     await setDoc(doc(db, 'events', 'e1'), { companyId: 'co-1', customerId: 'c1', ticketId: 'tk1', type: 'call', summary: 'inbound' });
+    await setDoc(doc(db, 'calls', 'call1'), { companyId: 'co-1', customerId: 'c1', ticketId: 'tk1', status: 'answered' });
     await setDoc(doc(db, 'notes', 'n1'), { companyId: 'co-1', customerId: 'c1', text: 'own note', author: 'user@co1.com' });
     await setDoc(doc(db, 'notes', 'n2'), { companyId: 'co-1', customerId: 'c1', text: 'someone elses', author: 'user@co1.com' });
   });
@@ -182,6 +183,13 @@ describe('Firestore security rules (flat allow-list)', () => {
     // The author may delete their own note; a different member may not.
     await assertSucceeds(deleteDoc(doc(member(), 'notes', 'n1')));
     await assertFails(deleteDoc(doc(multi(), 'notes', 'n2')));
+  });
+
+  it('lets a call be moved to another ticket, but not otherwise written', async () => {
+    await assertSucceeds(updateDoc(doc(member(), 'calls', 'call1'), { ticketId: 'tk2' }));
+    await assertFails(updateDoc(doc(member(), 'calls', 'call1'), { status: 'missed' }));
+    await assertFails(deleteDoc(doc(member(), 'calls', 'call1')));
+    await assertFails(setDoc(doc(member(), 'calls', 'call-new'), { companyId: 'co-1', customerId: 'c1' }));
   });
 
   it('lets a member edit their own company settings', async () => {

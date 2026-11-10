@@ -8,7 +8,11 @@ import { Avatar } from '../components/Avatar.js';
 import { Icon } from '../components/Icon.js';
 import { NoteComposer } from '../components/NoteComposer.js';
 import { NotesList } from '../components/NotesList.js';
-import type { Call, Customer, Note, TimelineEvent } from '../types.js';
+import { MoveTo } from '../components/MoveEvent.js';
+import type { Call, Customer, Note, Ticket, TimelineEvent } from '../types.js';
+
+const backLabelFor = (path: string): 'call.backToTicket' | 'call.back' =>
+  path.includes('/tickets/') ? 'call.backToTicket' : 'call.back';
 
 /** mm:ss for a duration in seconds; empty when unknown. */
 function duration(seconds: number | undefined): string {
@@ -25,14 +29,16 @@ export function CallDetail() {
   const services = useServices();
   const { t, locale } = useI18n();
 
-  // Return to the ticket this call was opened from, when there is one; the back
-  // link resolves to that ticket, else to the parent ticket, else the calls log.
-  const fromTicket = params.get('from') ?? undefined;
+  // `back` carries the full path the call was opened from (a ticket, the calls
+  // log, search…), so Back always returns to the origin. Falls back to the
+  // call's own ticket, then the calls log.
+  const backParam = params.get('back') ?? undefined;
 
   const [call, setCall] = useState<Call | null | undefined>(undefined);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [allTickets, setAllTickets] = useState<Ticket[]>([]);
 
   const companyId = profile?.companyId;
 
@@ -51,6 +57,7 @@ export function CallDetail() {
     const unsubs = [
       services.subscribeCustomerEvents(companyId, customerId, setEvents),
       services.subscribeNotes(companyId, customerId, setNotes),
+      services.subscribeCustomerTickets(companyId, customerId, setAllTickets),
     ];
     return () => unsubs.forEach((u) => u());
   }, [services, companyId, customerId]);
@@ -65,9 +72,9 @@ export function CallDetail() {
   if (call === null)
     return (
       <section>
-        <Link to={fromTicket !== undefined ? `/tickets/${fromTicket}` : '/'} className="btn btn--ghost btn--sm">
+        <Link to={backParam ?? '/'} className="btn btn--ghost btn--sm">
           <Icon name="back" size={16} />
-          {fromTicket !== undefined ? t('call.backToTicket') : t('call.back')}
+          {t(backLabelFor(backParam ?? '/'))}
         </Link>
         <div className="card card--pad empty" style={{ marginTop: '1rem' }}>
           <p>{t('call.notFound')}</p>
@@ -78,16 +85,13 @@ export function CallDetail() {
   const c = call;
   const custName = customer?.name ?? t('common.unknownCustomer');
   const isLive = c.status === 'ringing';
+  const backTo = backParam ?? (c.ticketId !== undefined ? `/tickets/${c.ticketId}` : '/');
 
   return (
     <section>
-      <Link
-        to={fromTicket !== undefined ? `/tickets/${fromTicket}` : c.ticketId !== undefined ? `/tickets/${c.ticketId}` : '/'}
-        className="btn btn--ghost btn--sm"
-        style={{ marginBottom: '0.8rem' }}
-      >
+      <Link to={backTo} className="btn btn--ghost btn--sm" style={{ marginBottom: '0.8rem' }}>
         <Icon name="back" size={16} />
-        {fromTicket !== undefined || c.ticketId !== undefined ? t('call.backToTicket') : t('call.back')}
+        {t(backLabelFor(backTo))}
       </Link>
 
       <div className="detail-head">
@@ -106,6 +110,20 @@ export function CallDetail() {
           {isLive && <span className="badge badge--ringing live">{t('call.live')}</span>}
           <span className={`badge badge--${c.status}`}>{t(`call.status.${c.status}`)}</span>
           <span className="badge">{t(`call.direction.${c.direction}`)}</span>
+          {/* Same move option as the call has inside a ticket. */}
+          {companyId !== undefined && (
+            <MoveTo
+              currentTicketId={c.ticketId}
+              tickets={allTickets}
+              onMove={(to) => void services.moveCall(c.id, to)}
+              onMoveToNew={() => {
+                void (async () => {
+                  const id = await services.createTicket(companyId, c.customerId);
+                  await services.moveCall(c.id, id);
+                })();
+              }}
+            />
+          )}
         </div>
       </div>
 

@@ -1,7 +1,11 @@
 export type TicketStatus = 'open' | 'pending' | 'closed';
 export type TicketOpenedBy = 'call' | 'email' | 'manual';
 
-/** At most one open ticket per customer at a time. */
+/**
+ * A customer may have several open tickets. A call routes to the most recently
+ * active open/pending one (TicketRepo.findOpen), and an agent can move it or
+ * open a new ticket. (Earlier the model enforced one open ticket per customer.)
+ */
 export interface Ticket {
   readonly id: string;
   readonly companyId: string;

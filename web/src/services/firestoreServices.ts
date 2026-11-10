@@ -87,6 +87,8 @@ export interface Services {
   // timestamps. The engine keeps its own Admin-SDK write path.
   setTicketStatus(ticketId: string, status: TicketStatus): Promise<void>;
   setTicketSubject(ticketId: string, subject: string): Promise<void>;
+  /** Open a new ticket for a customer by hand; returns its id. */
+  createTicket(companyId: string, customerId: string, subject?: string): Promise<string>;
   /** Pin / unpin so a record sorts to the top of its list. */
   setTicketPinned(ticketId: string, pinned: boolean): Promise<void>;
   setCustomerPinned(customerId: string, pinned: boolean): Promise<void>;
@@ -466,6 +468,19 @@ export function createFirestoreServices(db: Firestore): Services {
 
     async setTicketSubject(ticketId, subject) {
       await updateDoc(doc(db, 'tickets', ticketId), { subject, lastActivityAt: serverTimestamp() });
+    },
+
+    async createTicket(companyId, customerId, subject) {
+      const ref = await addDoc(collection(db, 'tickets'), {
+        companyId,
+        customerId,
+        status: 'open',
+        openedBy: 'manual',
+        openedAt: serverTimestamp(),
+        lastActivityAt: serverTimestamp(),
+        ...(subject !== undefined && subject.trim() !== '' ? { subject: subject.trim() } : {}),
+      });
+      return ref.id;
     },
 
     async setTicketPinned(ticketId, pinned) {

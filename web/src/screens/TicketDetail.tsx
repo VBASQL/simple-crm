@@ -202,7 +202,7 @@ export function TicketDetail() {
                       {c ? (
                         <>
                           <span className={`badge badge--${c.status}`}>{t(`call.status.${c.status}`)}</span>
-                          <Link to={`/calls/${c.id}?from=${ticketId}`} className="grow link">
+                          <Link to={`/calls/${c.id}?back=/tickets/${ticketId}`} className="grow link">
                             {t(`call.direction.${c.direction}`)} · {c.callerNumber ?? t('common.unknownCustomer')}
                           </Link>
                           <span className="muted">{relativeTime(c.startTime, locale)}</span>
@@ -228,6 +228,17 @@ export function TicketDetail() {
                         currentTicketId={ticketId}
                         tickets={allTickets}
                         onMove={(to) => (c ? void services.moveCall(c.id, to) : e ? void services.moveEvent(e.id, to) : undefined)}
+                        {...(companyId !== undefined && customerId !== undefined
+                          ? {
+                              onMoveToNew: () => {
+                                void (async () => {
+                                  const id = await services.createTicket(companyId, customerId);
+                                  if (c) await services.moveCall(c.id, id);
+                                  else if (e) await services.moveEvent(e.id, id);
+                                })();
+                              },
+                            }
+                          : {})}
                       />
                     </div>
                     {noteFor === anchorKey && companyId !== undefined && customerId !== undefined && (

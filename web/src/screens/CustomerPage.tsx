@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useServices } from '../services/ServicesContext.js';
 import { useI18n } from '../i18n/i18n.js';
@@ -16,6 +16,7 @@ import type { Customer, Note, Ticket } from '../types.js';
 // reached by opening a ticket.
 export function CustomerPage() {
   const { customerId = '' } = useParams();
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const services = useServices();
   const { t, locale } = useI18n();
@@ -89,7 +90,24 @@ export function CustomerPage() {
       <div className="grid-2">
         {/* Tickets — the customer's work, each nesting its own calls. */}
         <div className="card card--pad">
-          <h2>{t('customer.tickets')}</h2>
+          <div className="group-head">
+            <h2>{t('customer.tickets')}</h2>
+            {companyId !== undefined && (
+              <button
+                type="button"
+                className="btn btn--sm"
+                onClick={() => {
+                  void (async () => {
+                    const id = await services.createTicket(companyId, customerId);
+                    navigate(`/tickets/${id}`);
+                  })();
+                }}
+              >
+                <Icon name="plus" size={14} />
+                {t('customer.newTicket')}
+              </button>
+            )}
+          </div>
           {tickets.length === 0 ? (
             <p className="muted">{t('customer.noTickets')}</p>
           ) : (

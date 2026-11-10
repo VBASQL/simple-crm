@@ -65,11 +65,13 @@ export function Tickets() {
                 <th>{t('tickets.customer')}</th>
                 <th>{t('tickets.statusCol')}</th>
                 <th>{t('tickets.updated')}</th>
+                <th />
               </tr>
             </thead>
             <tbody>
               {visible.map((tk) => {
                 const name = nameOf(tk.customerId);
+                const closed = tk.status === 'closed';
                 return (
                   <tr key={tk.id} className="row" onClick={() => navigate(`/tickets/${tk.id}`)}>
                     <td>
@@ -88,6 +90,19 @@ export function Tickets() {
                       <span className={`badge badge--${tk.status}`}>{t(`ticket.status.${tk.status}`)}</span>
                     </td>
                     <td className="muted">{relativeTime(tk.lastActivityAt, locale)}</td>
+                    <td style={{ textAlign: 'end' }}>
+                      {/* Quick close / reopen without opening the ticket. */}
+                      <button
+                        type="button"
+                        className="btn btn--sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void services.setTicketStatus(tk.id, closed ? 'open' : 'closed');
+                        }}
+                      >
+                        {closed ? t('ticket.reopen') : t('ticket.close')}
+                      </button>
+                    </td>
                   </tr>
                 );
               })}

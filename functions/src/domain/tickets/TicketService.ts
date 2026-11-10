@@ -18,9 +18,10 @@ export interface TicketOutcome {
 }
 
 /**
- * Enforces "at most one open ticket per customer". Resume = find a ticket with
- * status ≠ closed; if it is stale it is closed first and a fresh one opened so
- * the invariant always holds. See docs/build-plan.md "Key rules".
+ * Opens or resumes a ticket for a call. A customer may have several open
+ * tickets; findOpen returns the most recently active one, so a call attaches
+ * there (deterministic). If that one is stale it is closed and a fresh ticket
+ * opened. See docs/build-plan.md "Key rules".
  */
 export class TicketService {
   constructor(

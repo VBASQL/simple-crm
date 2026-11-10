@@ -71,7 +71,7 @@ export function Tickets() {
               {visible.map((tk) => {
                 const name = nameOf(tk.customerId);
                 return (
-                  <tr key={tk.id} className="row" onClick={() => navigate(`/customers/${tk.customerId}`)}>
+                  <tr key={tk.id} className="row" onClick={() => navigate(`/tickets/${tk.id}`)}>
                     <td>
                       <b>{tk.subject ?? t('tickets.noSubject')}</b>
                     </td>

@@ -91,7 +91,7 @@ export function CustomerPage() {
             <ul className="timeline">
               {events.map((e) => (
                 <li key={e.id}>
-                  <span className={`badge badge--${e.type}`}>{e.type}</span>
+                  <span className={`badge badge--${e.type}`}>{t(`event.type.${e.type}`)}</span>
                   <span className="grow">{e.summary}</span>
                   <span className="muted">{relativeTime(e.at, locale)}</span>
                 </li>
@@ -107,7 +107,9 @@ export function CustomerPage() {
               {tickets.map((tk) => (
                 <li key={tk.id}>
                   <span className={`badge badge--${tk.status}`}>{t(`ticket.status.${tk.status}`)}</span>
-                  <span className="grow">{tk.subject ?? t('tickets.noSubject')}</span>
+                  <Link to={`/tickets/${tk.id}`} className="grow link">
+                    {tk.subject ?? t('tickets.noSubject')}
+                  </Link>
                   <span className="muted">{relativeTime(tk.lastActivityAt, locale)}</span>
                 </li>
               ))}

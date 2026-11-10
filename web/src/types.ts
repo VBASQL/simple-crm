@@ -76,6 +76,7 @@ export interface Ticket {
   readonly customerId: string;
   readonly status: TicketStatus;
   readonly subject?: string;
+  readonly openedAt?: Date;
   readonly lastActivityAt?: Date;
 }
 

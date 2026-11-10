@@ -223,6 +223,57 @@ input:focus, select:focus { outline: 2px solid var(--brand-soft); border-color: 
 .popup__actions .btn { flex: 1; justify-content: center; }
 @keyframes pop { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
+/* ---------- Stack / links ---------- */
+.stack { display: flex; flex-direction: column; gap: 1rem; }
+.link { color: var(--brand); font-weight: 550; }
+.link:hover { text-decoration: underline; }
+
+/* ---------- Search results ---------- */
+.group-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+.group-head h2 { margin: 0; }
+.results { display: flex; flex-direction: column; }
+.result {
+  display: flex; align-items: center; gap: 0.7rem; width: 100%;
+  padding: 0.6rem 0.4rem; border: none; background: none; font: inherit; color: inherit;
+  cursor: pointer; text-align: start; border-bottom: 1px solid var(--line); border-radius: 8px;
+}
+.result:last-child { border-bottom: none; }
+.result:hover { background: var(--surface-2); }
+.result__main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.result__main b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Detail header (ticket) ---------- */
+.detail-head { display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin: 0.4rem 0 0.6rem; }
+.detail-head__main { display: flex; flex-direction: column; gap: 0.5rem; margin-inline-end: auto; min-width: 0; }
+.detail-head__cust { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--ink-2); font-size: 0.9rem; width: fit-content; }
+.detail-head__cust:hover { color: var(--brand); }
+.subject-view { display: inline-flex; align-items: center; gap: 0.5rem; border: none; background: none; cursor: pointer; padding: 0; color: inherit; text-align: start; }
+.subject-view svg { opacity: 0; color: var(--muted); transition: opacity 0.12s; }
+.subject-view:hover svg { opacity: 1; }
+.subject-edit { display: flex; gap: 0.5rem; align-items: center; }
+.subject-edit input { min-width: 240px; font-size: 1.1rem; font-weight: 650; }
+.detail-meta { display: flex; gap: 1.2rem; flex-wrap: wrap; font-size: 0.82rem; }
+
+/* ---------- Segmented control (status picker) ---------- */
+.segmented { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+.segmented__btn { border: none; background: none; font: inherit; font-weight: 550; font-size: 0.85rem; color: var(--ink-2); padding: 0.35rem 0.8rem; border-radius: 999px; cursor: pointer; }
+.segmented__btn:hover { color: var(--ink); }
+.segmented__btn.is-active { background: var(--surface); color: var(--brand); box-shadow: var(--shadow); }
+
+/* ---------- Note form ---------- */
+.note-form { display: flex; gap: 0.6rem; align-items: flex-end; flex-wrap: wrap; }
+.note-input {
+  flex: 1; min-width: 220px; resize: vertical; font: inherit;
+  padding: 0.55rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--ink);
+}
+.note-input:focus { outline: 2px solid var(--brand-soft); border-color: var(--brand); }
+
+/* New event-type badge tints */
+.badge--note { background: var(--brand-soft); color: var(--brand); }
+.badge--email { background: var(--surface-2); color: var(--ink-2); }
+.badge--order, .badge--subscription { background: var(--ok-soft); color: var(--ok); }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   .layout { grid-template-columns: 1fr; }

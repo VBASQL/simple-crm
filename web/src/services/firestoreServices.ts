@@ -1,6 +1,8 @@
 import {
+  addDoc,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   limit,
@@ -9,6 +11,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
   Timestamp,
   type Firestore,
@@ -57,6 +60,23 @@ export interface Services {
   subscribeDids(companyId: string, cb: (dids: Did[]) => void): Unsubscribe;
   addDid(number: string, label?: string): Promise<void>;
   removeDid(number: string): Promise<void>;
+  // A single ticket and its own slice of the timeline, for the ticket detail
+  // view. Live so one agent's change (close, note) shows for another at once.
+  subscribeTicket(ticketId: string, cb: (ticket: Ticket | null) => void): Unsubscribe;
+  subscribeTicketEvents(companyId: string, ticketId: string, cb: (e: TimelineEvent[]) => void): Unsubscribe;
+  // Agent CRM actions. These are user-initiated edits (not call-engine writes),
+  // so they go straight to Firestore guarded by security rules, with server
+  // timestamps. The engine keeps its own Admin-SDK write path.
+  setTicketStatus(ticketId: string, status: TicketStatus): Promise<void>;
+  setTicketSubject(ticketId: string, subject: string): Promise<void>;
+  /** Append a note to the timeline (and bump the ticket when one is given). */
+  addNote(input: {
+    companyId: string;
+    customerId: string;
+    ticketId?: string;
+    text: string;
+    author?: string;
+  }): Promise<void>;
 }
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
@@ -115,6 +135,7 @@ function mapTicket(id: string, d: DocumentData): Ticket {
     customerId: str(d.customerId) ?? '',
     status: (str(d.status) as TicketStatus) ?? 'open',
     subject: str(d.subject),
+    openedAt: date(d.openedAt),
     lastActivityAt: date(d.lastActivityAt),
   };
 }
@@ -268,6 +289,57 @@ export function createFirestoreServices(db: Firestore): Services {
 
     async removeDid(number) {
       await httpsCallable(functions, 'manageDid')({ action: 'remove', number });
+    },
+
+    subscribeTicket(ticketId, cb) {
+      return onSnapshot(doc(db, 'tickets', ticketId), (snap) =>
+        cb(snap.exists() ? mapTicket(snap.id, snap.data()) : null),
+      );
+    },
+
+    subscribeTicketEvents(companyId, ticketId, cb) {
+      // Two equality filters, no orderBy — Firestore serves this with a zig-zag
+      // merge and needs no composite index (same as subscribeCustomerCalls).
+      const q = query(
+        collection(db, 'events'),
+        where('companyId', '==', companyId),
+        where('ticketId', '==', ticketId),
+      );
+      return onSnapshot(q, (snap) => cb(snap.docs.map((s) => mapEvent(s.id, s.data())).sort(byTimeDesc)));
+    },
+
+    async setTicketStatus(ticketId, status) {
+      // closedAt drives "closed 3d ago" and the retention job; clear it on
+      // reopen so a resumed ticket is never mistaken for a closed one.
+      await updateDoc(doc(db, 'tickets', ticketId), {
+        status,
+        lastActivityAt: serverTimestamp(),
+        closedAt: status === 'closed' ? serverTimestamp() : deleteField(),
+      });
+    },
+
+    async setTicketSubject(ticketId, subject) {
+      await updateDoc(doc(db, 'tickets', ticketId), { subject, lastActivityAt: serverTimestamp() });
+    },
+
+    async addNote({ companyId, customerId, ticketId, text, author }) {
+      // A note is a first-class timeline event — same shape the engine writes —
+      // so it threads into the customer history next to calls and emails.
+      await addDoc(collection(db, 'events'), {
+        companyId,
+        customerId,
+        ...(ticketId !== undefined ? { ticketId } : {}),
+        type: 'note',
+        summary: text,
+        payload: author !== undefined ? { author } : {},
+        at: serverTimestamp(),
+        source: 'manual',
+      });
+      // A note is activity: bump the ticket so it sorts up and stays off the
+      // auto-close path.
+      if (ticketId !== undefined) {
+        await updateDoc(doc(db, 'tickets', ticketId), { lastActivityAt: serverTimestamp() });
+      }
     },
   };
 }

@@ -7,6 +7,8 @@ import { AppShell } from './screens/AppShell.js';
 import { CallsLog } from './screens/CallsLog.js';
 import { Customers } from './screens/Customers.js';
 import { Tickets } from './screens/Tickets.js';
+import { TicketDetail } from './screens/TicketDetail.js';
+import { Search } from './screens/Search.js';
 import { CustomerPage } from './screens/CustomerPage.js';
 import { AdminUsers } from './screens/AdminUsers.js';
 import { Dids } from './screens/Dids.js';
@@ -25,9 +27,11 @@ function Gate() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<CallsLog />} />
+        <Route path="search" element={<Search />} />
         <Route path="customers" element={<Customers />} />
         <Route path="customers/:customerId" element={<CustomerPage />} />
         <Route path="tickets" element={<Tickets />} />
+        <Route path="tickets/:ticketId" element={<TicketDetail />} />
         <Route path="admin" element={<AdminUsers />} />
         <Route path="dids" element={<Dids />} />
         <Route path="share" element={<Share />} />

@@ -7,6 +7,7 @@ import { Avatar } from '../components/Avatar.js';
 
 const NAV: { to: string; icon: IconName; key: string; end?: boolean }[] = [
   { to: '/', icon: 'calls', key: 'nav.calls', end: true },
+  { to: '/search', icon: 'search', key: 'nav.search' },
   { to: '/customers', icon: 'customers', key: 'nav.customers' },
   { to: '/tickets', icon: 'tickets', key: 'nav.tickets' },
   { to: '/admin', icon: 'users', key: 'nav.admin' },

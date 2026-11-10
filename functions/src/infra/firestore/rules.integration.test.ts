@@ -7,7 +7,7 @@ import {
   assertSucceeds,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, updateDoc, addDoc, collection } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-crm-rules';
 
@@ -37,6 +37,9 @@ beforeEach(async () => {
     await setDoc(doc(db, 'allowlist', 'user@co1.com'), { companyId: 'co-1' });
     await setDoc(doc(db, 'customers', 'c1'), { companyId: 'co-1', name: 'Own company' });
     await setDoc(doc(db, 'customers', 'c2'), { companyId: 'co-2', name: 'Other company' });
+    // A ticket and an existing event, to test agent updates and note immutability.
+    await setDoc(doc(db, 'tickets', 'tk1'), { companyId: 'co-1', customerId: 'c1', status: 'open' });
+    await setDoc(doc(db, 'events', 'e1'), { companyId: 'co-1', customerId: 'c1', type: 'call', summary: 'inbound' });
   });
 });
 
@@ -72,7 +75,52 @@ describe('Firestore security rules (flat allow-list)', () => {
     await assertSucceeds(deleteDoc(doc(member(), 'allowlist', 'user@co1.com')));
   });
 
-  it('lets an allow-listed user manage a did in their company', async () => {
-    await assertSucceeds(setDoc(doc(member(), 'dids', 'd1'), { companyId: 'co-1', number: '+97237654321' }));
+  it('denies a direct client write to dids (function-only, so numbers are normalised)', async () => {
+    // DIDs are written exclusively by the manageDid function (Admin SDK); a raw
+    // client write would skip E.164 normalisation and break call routing.
+    await assertFails(setDoc(doc(member(), 'dids', 'd1'), { companyId: 'co-1', number: '+97237654321' }));
+  });
+
+  // Agent CRM actions on tickets and the timeline (client writes, rule-guarded).
+  it('lets an allow-listed user change a ticket in their company', async () => {
+    await assertSucceeds(updateDoc(doc(member(), 'tickets', 'tk1'), { status: 'closed' }));
+  });
+
+  it('lets an allow-listed user append a note to the timeline', async () => {
+    await assertSucceeds(
+      addDoc(collection(member(), 'events'), {
+        companyId: 'co-1',
+        customerId: 'c1',
+        type: 'note',
+        summary: 'Called back',
+      }),
+    );
+  });
+
+  it('stops an agent from forging a non-note event (e.g. a fake call)', async () => {
+    await assertFails(
+      addDoc(collection(member(), 'events'), {
+        companyId: 'co-1',
+        customerId: 'c1',
+        type: 'call',
+        summary: 'fake',
+      }),
+    );
+  });
+
+  it('stops adding a note to another company', async () => {
+    await assertFails(
+      addDoc(collection(member(), 'events'), {
+        companyId: 'co-2',
+        customerId: 'c2',
+        type: 'note',
+        summary: 'intrusion',
+      }),
+    );
+  });
+
+  it('keeps timeline events immutable (no edit, no delete)', async () => {
+    await assertFails(updateDoc(doc(member(), 'events', 'e1'), { summary: 'tampered' }));
+    await assertFails(deleteDoc(doc(member(), 'events', 'e1')));
   });
 });

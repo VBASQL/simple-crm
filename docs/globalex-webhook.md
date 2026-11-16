@@ -222,7 +222,7 @@ fields on.
 | `ring` | call_id, direction, caller_number, did_number | Upsert call (status `ringing`), resolve company by DID, find/create customer, find/create open ticket, write `ringing/{call_id}` (pop-up) |
 | `answer` | call_id | status `answered`, answertime, answering_extension; delete `ringing/{call_id}` |
 | `hangup` | call_id | if never answered → status `missed` + `missed_call` event; delete `ringing/{call_id}` |
-| `cdr` | call_id, disposition | finalise: duration, talk_time, times, ivr_inputs, recording_*, voicemail detection (`application_type == Voicemail` or `voicemail_box` or `lastapp == VoiceMail`), timeline event; outbound → end-of-call prompt (no auto ticket) |
+| `cdr` | call_id, disposition | finalise: duration, talk_time, times, ivr_inputs, recording_*, voicemail detection (`application_type == Voicemail` or `voicemail_box` or `lastapp == VoiceMail`), timeline event. Every call (inbound/outbound/anonymous) opens or resumes a ticket, so it is always reachable through one |
 | `dtmf` | call_id, digit | append to call's IVR trail |
 
 Rules: writes are merges on `calls/{call_id}`; an event with `timestamp`
@@ -243,12 +243,13 @@ as Globalex's own webhook builder defines.
 - **inbound** — tenant from `did_number`; customer from `caller_number`
   (withheld caller → the company's "Unknown caller" bucket); open/resume a
   ticket; fire the pop-up.
-- **outbound** — handled at CDR only (the plan logs outbound, never auto-opens
-  a ticket). `did_number` is inbound-only, so the tenant is the **outbound
-  line**: `outbound_callerid`, else the number inside `callerid`
-  (`"Company" <0501234567>`), normalised and looked up in `dids`. The customer
-  is the dialled party, `destination_number`. This assumes the outbound caller
-  id is one of the company's DIDs (the account topology: Globalex is one
-  account, tenancy is by DID) — verifiable from any real outbound CDR.
+- **outbound** — handled at CDR (no ring for outbound). `did_number` is
+  inbound-only, so the tenant is the **outbound line**: `outbound_callerid`,
+  else the number inside `callerid` (`"Company" <0501234567>`), normalised and
+  looked up in `dids`. The customer is the dialled party, `destination_number`.
+  Like inbound, an outbound call opens or resumes a ticket (every call belongs
+  to a ticket). This assumes the outbound caller id is one of the company's
+  DIDs (the account topology: Globalex is one account, tenancy is by DID) —
+  verifiable from any real outbound CDR.
 - **internal** — extension-to-extension; not a customer interaction, dropped
   (still captured in the inbox).

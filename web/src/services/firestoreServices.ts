@@ -145,6 +145,7 @@ function mapRinging(id: string, d: DocumentData): RingingDoc {
     callerNumber: str(d.callerNumber),
     didNumber: str(d.didNumber),
     extension: str(d.extension),
+    ...(str(d.queueName) !== undefined ? { queueName: str(d.queueName) } : {}),
     startedAt: date(d.startedAt),
     expiresAt: date(d.expiresAt),
   };

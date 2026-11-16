@@ -207,5 +207,11 @@
   "callsLog.search": "Search calls…",
   "tickets.search": "Search tickets…",
   "customer.calls": "Calls",
-  "customer.noCalls": "No calls yet."
+  "customer.noCalls": "No calls yet.",
+  "nav.queue": "Queue",
+  "queue.title": "Live queue",
+  "queue.empty": "No calls waiting right now.",
+  "queue.noQueue": "Direct (no queue)",
+  "queue.open": "Open call",
+  "queue.waiting": "Waiting"
 }

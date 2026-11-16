@@ -11,6 +11,7 @@ type NavItem = { to: string; icon: IconName; key: string; end?: boolean };
 // The left sidebar is the per-company WORKING menu: the day-to-day CRM only.
 const WORKING_NAV: NavItem[] = [
   { to: '/', icon: 'calls', key: 'nav.calls', end: true },
+  { to: '/queue', icon: 'phone', key: 'nav.queue' },
   { to: '/search', icon: 'search', key: 'nav.search' },
   { to: '/customers', icon: 'customers', key: 'nav.customers' },
   { to: '/tickets', icon: 'tickets', key: 'nav.tickets' },

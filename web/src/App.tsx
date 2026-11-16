@@ -6,6 +6,7 @@ import { SignIn } from './screens/SignIn.js';
 import { AppShell } from './screens/AppShell.js';
 import { CallsLog } from './screens/CallsLog.js';
 import { CallDetail } from './screens/CallDetail.js';
+import { Queue } from './screens/Queue.js';
 import { Customers } from './screens/Customers.js';
 import { Tickets } from './screens/Tickets.js';
 import { TicketDetail } from './screens/TicketDetail.js';
@@ -29,6 +30,7 @@ function Gate() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<CallsLog />} />
+        <Route path="queue" element={<Queue />} />
         <Route path="calls/:callId" element={<CallDetail />} />
         <Route path="search" element={<Search />} />
         <Route path="customers" element={<Customers />} />

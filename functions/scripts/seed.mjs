@@ -197,7 +197,39 @@ await db.doc('ringing/seed-ring').set({
   callerNumber: '+972521234567',
   didNumber: '+97237654321',
   extension: '201',
-  startedAt: new Date(now),
+  queueName: 'Support',
+  startedAt: new Date(now - 25_000),
+  expiresAt: new Date(now + 120_000),
+});
+
+// A second caller waiting, in a different queue, to show the live queue board.
+await db.doc('customers/cust-3').set({
+  companyId: COMPANY,
+  name: 'Noa Barak',
+  phones: ['+972503334444'],
+  emails: [],
+  source: 'phone',
+  createdAt: new Date(now - 200_000),
+  lastContactAt: new Date(now),
+  tags: [],
+});
+await db.doc('calls/seed-ring2').set({
+  companyId: COMPANY,
+  customerId: 'cust-3',
+  direction: 'inbound',
+  status: 'ringing',
+  callerNumber: '+972503334444',
+  didNumber: '+97237654321',
+  startTime: new Date(now - 70_000),
+  lastEventAt: new Date(now - 70_000),
+});
+await db.doc('ringing/seed-ring2').set({
+  companyId: COMPANY,
+  customerId: 'cust-3',
+  callerNumber: '+972503334444',
+  didNumber: '+97237654321',
+  queueName: 'Sales',
+  startedAt: new Date(now - 70_000),
   expiresAt: new Date(now + 120_000),
 });
 

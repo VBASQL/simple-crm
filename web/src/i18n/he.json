@@ -207,5 +207,11 @@
   "callsLog.search": "חיפוש שיחות…",
   "tickets.search": "חיפוש פניות…",
   "customer.calls": "שיחות",
-  "customer.noCalls": "אין שיחות עדיין."
+  "customer.noCalls": "אין שיחות עדיין.",
+  "nav.queue": "תור",
+  "queue.title": "תור בזמן אמת",
+  "queue.empty": "אין שיחות ממתינות כרגע.",
+  "queue.noQueue": "ישיר (ללא תור)",
+  "queue.open": "פתח שיחה",
+  "queue.waiting": "ממתין"
 }

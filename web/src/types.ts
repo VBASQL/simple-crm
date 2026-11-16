@@ -51,6 +51,8 @@ export interface RingingDoc {
   readonly callerNumber?: string;
   readonly didNumber?: string;
   readonly extension?: string;
+  /** Queue the caller is waiting in (for the live queue board). */
+  readonly queueName?: string;
   readonly startedAt?: Date;
   /** When the ring should stop being shown if no hangup/answer arrived. */
   readonly expiresAt?: Date;

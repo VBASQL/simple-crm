@@ -139,6 +139,7 @@ export class CallService {
       ...(caller !== null ? { callerNumber: caller } : {}),
       didNumber: did,
       ...(p.extension !== undefined ? { extension: p.extension } : {}),
+      ...(p.queue !== undefined ? { queueName: p.queue } : {}),
     });
 
     return {

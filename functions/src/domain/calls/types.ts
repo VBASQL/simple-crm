@@ -34,6 +34,8 @@ export interface RingingDoc {
   readonly callerNumber?: string;
   readonly didNumber?: string;
   readonly extension?: string;
+  /** Queue the call is waiting in, for the live queue board. */
+  readonly queueName?: string;
   readonly startedAt: Date;
   readonly expiresAt: Date;
 }

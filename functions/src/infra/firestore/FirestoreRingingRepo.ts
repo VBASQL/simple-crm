@@ -22,6 +22,7 @@ export class FirestoreRingingRepo implements RingingRepo {
       ...(d.callerNumber !== undefined ? { callerNumber: d.callerNumber } : {}),
       ...(d.didNumber !== undefined ? { didNumber: d.didNumber } : {}),
       ...(d.extension !== undefined ? { extension: d.extension } : {}),
+      ...(d.queueName !== undefined ? { queueName: d.queueName } : {}),
     };
   }
 }
